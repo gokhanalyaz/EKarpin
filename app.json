@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DijitalKarpin",
+    "name": "EKarpin",
     "slug": "DijitalKarpin",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,11 @@
     "scheme": "dijitalkarpin",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.gokhanalyaz.DijitalKarpin",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +21,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.gokhanalyaz.DijitalKarpin"
     },
     "web": {
       "output": "static",
@@ -32,11 +37,30 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Vardiya açılış/kapanış km sayacı fotoğrafı çekebilmek için kameraya erişim gerekiyor."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d4657f89-0ed2-46d6-bcfc-e14401c94b84"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d4657f89-0ed2-46d6-bcfc-e14401c94b84"
     }
   }
 }
