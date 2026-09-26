@@ -9,6 +9,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 
 import { PhoneInput } from '@/components/phone-input';
@@ -23,6 +24,7 @@ import {
   assignDriver,
   findDriverByPhone,
   listVehicleDrivers,
+  setDriverDailyKmLimit,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
 import { getVehicle, type Vehicle } from '@/lib/vehicles';
@@ -37,6 +39,8 @@ export default function VehicleDetailScreen() {
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [showAddDriver, setShowAddDriver] = useState(false);
+  const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
+  const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -45,6 +49,9 @@ export default function VehicleDetailScreen() {
       const [v, d] = await Promise.all([getVehicle(id), listVehicleDrivers(id)]);
       setVehicle(v);
       setDrivers(d);
+      setLimitInputs(
+        Object.fromEntries(d.map((row) => [row.id, row.daily_km_discount_limit != null ? String(row.daily_km_discount_limit) : '']))
+      );
     } catch (e) {
       console.warn('Araç detayı yüklenemedi', e);
     } finally {
@@ -102,6 +109,25 @@ export default function VehicleDetailScreen() {
     }
   }
 
+  async function handleSaveLimit(row: VehicleDriverRow) {
+    const raw = limitInputs[row.id] ?? '';
+    const parsed = raw.trim() ? Number(raw.replace(',', '.')) : null;
+    if (raw.trim() && (Number.isNaN(parsed) || (parsed as number) < 0)) {
+      Alert.alert('Geçersiz değer', 'Geçerli bir km değeri gir (boş bırakırsan yetki kaldırılır).');
+      return;
+    }
+    setSavingLimitFor(row.id);
+    try {
+      await setDriverDailyKmLimit(row.id, parsed);
+      await load();
+      Alert.alert('Kaydedildi', parsed ? `${row.driver?.full_name ?? 'Şoför'} için günlük ${parsed} km düşüm hakkı tanımlandı.` : 'Km düşüm yetkisi kaldırıldı.');
+    } catch (e: any) {
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setSavingLimitFor(null);
+    }
+  }
+
   if (loading || !vehicle) {
     return (
       <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -142,6 +168,29 @@ export default function VehicleDetailScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   {item.driver?.phone ? `+${item.driver.phone}` : '-'}
                 </ThemedText>
+                {vehicle.payment_model === 'km_based' && (
+                  <ThemedView style={styles.kmLimitRow}>
+                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+                      Günlük Km Düşüm Hakkı
+                    </ThemedText>
+                    <TextInput
+                      style={[styles.kmLimitInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                      placeholder="Yok"
+                      placeholderTextColor={theme.textSecondary}
+                      keyboardType="number-pad"
+                      value={limitInputs[item.id] ?? ''}
+                      onChangeText={(v) => setLimitInputs((prev) => ({ ...prev, [item.id]: v }))}
+                    />
+                    <Pressable
+                      style={({ pressed }) => [styles.kmLimitSaveButton, pressed && styles.buttonPressed]}
+                      onPress={() => handleSaveLimit(item)}
+                      disabled={savingLimitFor === item.id}>
+                      <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+                        {savingLimitFor === item.id ? '...' : 'Kaydet'}
+                      </ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                )}
               </ThemedView>
             ))}
           </ThemedView>
@@ -206,6 +255,16 @@ const styles = StyleSheet.create({
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   list: { gap: Spacing.two, marginTop: Spacing.two },
   driverCard: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
+  kmLimitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
+  kmLimitInput: {
+    borderWidth: 1,
+    borderRadius: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    width: 70,
+    fontSize: 14,
+  },
+  kmLimitSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
   hint: { marginBottom: Spacing.one },
   button: {
     backgroundColor: '#208AEF',

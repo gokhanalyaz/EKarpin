@@ -7,9 +7,9 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
-import { closeShift, formatDuration, getShiftDurationMinutes, type Shift } from '@/lib/shifts';
+import { closeShift, formatDuration, getShiftDurationMinutes, getUsedKmDiscountToday, type Shift } from '@/lib/shifts';
 import { getOwnerPushToken, sendPushNotification } from '@/lib/notifications';
-import { listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
+import { getDriverDailyKmLimit, listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
 import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
@@ -38,6 +38,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
   const [notePhotoUri, setNotePhotoUri] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [kmDiscountLimit, setKmDiscountLimit] = useState<number | null>(null);
+  const [kmDiscountUsedToday, setKmDiscountUsedToday] = useState(0);
+  const [kmDiscount, setKmDiscount] = useState('');
+  const [kmDiscountNote, setKmDiscountNote] = useState('');
+
   const isPercentage = vehicle.payment_model === 'percentage';
 
   useEffect(() => {
@@ -49,6 +54,22 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
       })
       .catch(() => {});
   }, [vehicle.id, profile?.id]);
+
+  useEffect(() => {
+    if (isPercentage || !profile) return;
+    getDriverDailyKmLimit(vehicle.id, profile.id)
+      .then((limit) => {
+        setKmDiscountLimit(limit);
+        if (limit != null) {
+          return getUsedKmDiscountToday(vehicle.id, profile.id).then(setKmDiscountUsedToday);
+        }
+      })
+      .catch(() => {});
+  }, [vehicle.id, profile?.id, isPercentage]);
+
+  const kmDiscountRemaining =
+    kmDiscountLimit != null ? Math.max(0, kmDiscountLimit - kmDiscountUsedToday) : null;
+  const kmDiscountValue = num(kmDiscount);
 
   function num(value: string): number {
     const n = Number(value.replace(',', '.'));
@@ -65,7 +86,8 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
   const kmValue = Number(closingKm.replace(',', '.'));
   const kmTotal =
     !Number.isNaN(kmValue) && shift.opening_km != null ? kmValue - shift.opening_km : null;
-  const kmDebt = kmTotal != null ? kmTotal * (vehicle.km_rate ?? 0) : null;
+  const billableKmTotal = kmTotal != null ? Math.max(0, kmTotal - kmDiscountValue) : null;
+  const kmDebt = billableKmTotal != null ? billableKmTotal * (vehicle.km_rate ?? 0) : null;
 
   async function handleTakePhoto() {
     try {
@@ -132,6 +154,16 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
       Alert.alert('Tutar gerekli', 'Günün hasılat tutarını gir.');
       return;
     }
+    if (!isPercentage && kmDiscountValue > 0) {
+      if (kmDiscountRemaining != null && kmDiscountValue > kmDiscountRemaining) {
+        Alert.alert('Km düşümü fazla', `Bugün için kalan km düşüm hakkın ${kmDiscountRemaining} km.`);
+        return;
+      }
+      if (!kmDiscountNote.trim()) {
+        Alert.alert('Açıklama gerekli', 'Km düşümü için kısa bir açıklama yaz (örn. müşteri iptal etti).');
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -151,6 +183,8 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
           cardAmount: isPercentage ? num(cardAmount) : undefined,
           notes: notes.trim() ? notes.trim() : undefined,
           notesPhotoUri: notePhotoUri,
+          kmDiscount: !isPercentage && kmDiscountValue > 0 ? kmDiscountValue : undefined,
+          kmDiscountNote: !isPercentage && kmDiscountValue > 0 ? kmDiscountNote.trim() : undefined,
         },
         {
           onPhotoError: (errors) => {
@@ -219,6 +253,36 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         <ThemedText type="small" themeColor="textSecondary">
           Toplam km: {kmTotal}
         </ThemedText>
+      )}
+
+      {!isPercentage && kmDiscountLimit != null && (
+        <>
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Km Düşümü (İsteğe Bağlı)
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+            Bugün için kalan hakkın: {kmDiscountRemaining} km. Örn. müşteri iptal etti, durağa
+            boş dönmek zorunda kaldın gibi durumlarda kullan.
+          </ThemedText>
+          <TextInput
+            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+            placeholder="0"
+            placeholderTextColor={theme.textSecondary}
+            keyboardType="number-pad"
+            value={kmDiscount}
+            onChangeText={setKmDiscount}
+          />
+          {kmDiscountValue > 0 && (
+            <TextInput
+              style={[styles.input, styles.noteInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+              placeholder="Açıklama (zorunlu) — örn. müşteri iptal etti"
+              placeholderTextColor={theme.textSecondary}
+              value={kmDiscountNote}
+              onChangeText={setKmDiscountNote}
+              multiline
+            />
+          )}
+        </>
       )}
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
@@ -429,6 +493,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
               Araç Sahibine Km Borcu
             </ThemedText>
             <ThemedText style={styles.finalAmount}>{(kmDebt ?? 0).toFixed(2)} ₺</ThemedText>
+            {kmDiscountValue > 0 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.cashLabel}>
+                ({kmDiscountValue} km düşüldü, borç {billableKmTotal ?? 0} km üzerinden hesaplandı)
+              </ThemedText>
+            )}
           </>
         )}
       </ThemedView>

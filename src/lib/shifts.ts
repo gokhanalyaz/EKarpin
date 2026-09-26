@@ -33,11 +33,17 @@ export type Shift = {
 
   km_total: number | null;
   km_debt: number | null;
+  km_discount: number | null;
+  km_discount_note: string | null;
 
   handed_to_driver_id: string | null;
   notes: string | null;
   notes_photo_url: string | null;
   photo_debug: string | null;
+
+  driver_marked_delivered_at: string | null;
+  owner_confirmed_received_at: string | null;
+
   created_at: string;
 };
 
@@ -205,6 +211,9 @@ export type CloseShiftInput = {
   cardAmount?: number;
   notes?: string;
   notesPhotoUri?: string | null;
+  // Yalnizca km bazli modelde ve yetkili soforler icin kullanilir:
+  kmDiscount?: number;
+  kmDiscountNote?: string;
 };
 
 export type PhotoUploadErrors = {
@@ -221,6 +230,23 @@ export type PhotoUploadErrors = {
  * Km sistemi: km_total = kapanis km - acilis km
  *             km_debt = km_total * km_rate
  */
+/** Bu şoförün, bu araçta BUGÜN (yerel takvim günü) zaten kullandığı toplam km düşümünü döner. */
+export async function getUsedKmDiscountToday(vehicleId: string, driverId: string): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('shifts')
+    .select('km_discount')
+    .eq('vehicle_id', vehicleId)
+    .eq('driver_id', driverId)
+    .gte('closed_at', startOfDay.toISOString())
+    .not('km_discount', 'is', null);
+  if (error) throw error;
+
+  return (data ?? []).reduce((sum, row: any) => sum + (Number(row.km_discount) || 0), 0);
+}
+
 export async function closeShift(
   input: CloseShiftInput,
   options?: { onPhotoError?: (errors: PhotoUploadErrors) => void }
@@ -287,8 +313,36 @@ export async function closeShift(
     }
   } else {
     const kmRate = input.vehicle.km_rate ?? 0;
+    let kmDiscount = 0;
+
+    if (input.kmDiscount && input.kmDiscount > 0) {
+      const { data: vd, error: vdError } = await supabase
+        .from('vehicle_drivers')
+        .select('daily_km_discount_limit')
+        .eq('vehicle_id', input.vehicle.id)
+        .eq('driver_id', shift.driver_id)
+        .maybeSingle();
+      if (vdError) throw vdError;
+      const dailyLimit = (vd as { daily_km_discount_limit: number | null } | null)?.daily_km_discount_limit ?? null;
+      if (!dailyLimit || dailyLimit <= 0) {
+        throw new Error('Bu şoför için km düşüm yetkisi tanımlı değil.');
+      }
+      if (!input.kmDiscountNote || !input.kmDiscountNote.trim()) {
+        throw new Error('Km düşümü için bir açıklama notu yazman gerekiyor.');
+      }
+      const usedToday = await getUsedKmDiscountToday(input.vehicle.id, shift.driver_id);
+      const remaining = Math.max(0, dailyLimit - usedToday);
+      if (input.kmDiscount > remaining) {
+        throw new Error(`Bugün için kalan km düşüm hakkın ${remaining} km. Bu miktarın üzerine çıkamazsın.`);
+      }
+      kmDiscount = Math.min(input.kmDiscount, kmTotal);
+    }
+
+    const billableKm = kmTotal - kmDiscount;
     Object.assign(update, {
-      km_debt: kmTotal * kmRate,
+      km_debt: billableKm * kmRate,
+      km_discount: kmDiscount > 0 ? kmDiscount : null,
+      km_discount_note: kmDiscount > 0 ? input.kmDiscountNote?.trim() : null,
     });
   }
 

@@ -92,6 +92,21 @@ export default function HistoryScreen() {
     return map;
   }, [vehicles]);
 
+  const kmDiscountSummary = useMemo(() => {
+    const byDriver = new Map<string, number>();
+    let total = 0;
+    shifts.forEach((s) => {
+      const value = Number(s.km_discount) || 0;
+      if (value <= 0) return;
+      total += value;
+      byDriver.set(s.driver_id, (byDriver.get(s.driver_id) ?? 0) + value);
+    });
+    const rows = Array.from(byDriver.entries())
+      .map(([driverId, kmSum]) => ({ driverId, kmSum, name: driverNameById[driverId] ?? 'İsimsiz' }))
+      .sort((a, b) => b.kmSum - a.kmSum);
+    return { total, rows };
+  }, [shifts, driverNameById]);
+
   const load = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
@@ -169,6 +184,20 @@ export default function HistoryScreen() {
         ))}
       </ThemedView>
 
+      {isOwner && kmDiscountSummary.total > 0 && (
+        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
+          <ThemedText type="smallBold">Km Düşümü Özeti (bu filtre için)</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Toplam düşülen: {kmDiscountSummary.total} km
+          </ThemedText>
+          {kmDiscountSummary.rows.map((row) => (
+            <ThemedText key={row.driverId} type="small" themeColor="textSecondary">
+              {row.name}: {row.kmSum} km
+            </ThemedText>
+          ))}
+        </ThemedView>
+      )}
+
       <ThemedText type="smallBold" style={styles.sectionTitle}>
         Sonuçlar {loading ? '' : `(${shifts.length})`}
       </ThemedText>
@@ -220,4 +249,5 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff', fontWeight: '700' },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, marginTop: Spacing.two },
+  kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
 });
