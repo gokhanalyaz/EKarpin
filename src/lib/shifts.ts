@@ -37,6 +37,7 @@ export type Shift = {
   handed_to_driver_id: string | null;
   notes: string | null;
   notes_photo_url: string | null;
+  photo_debug: string | null;
   created_at: string;
 };
 
@@ -157,7 +158,7 @@ export async function openShift(
     const path = await uploadShiftPhoto(shift.id, input.photoUri, 'opening');
     const { data: updated, error: updateError } = await supabase
       .from('shifts')
-      .update({ opening_km_photo_url: path })
+      .update({ opening_km_photo_url: path, photo_debug: `[v3] opening OK @ ${new Date().toISOString()}` })
       .eq('id', shift.id)
       .select()
       .single();
@@ -165,7 +166,14 @@ export async function openShift(
     return updated as Shift;
   } catch (e: any) {
     console.warn('Açılış fotoğrafı yüklenemedi', e);
-    options?.onPhotoError?.(e?.message ?? String(e));
+    const message = e?.message ?? String(e);
+    options?.onPhotoError?.(message);
+    try {
+      await supabase
+        .from('shifts')
+        .update({ photo_debug: `[v3] opening FAILED @ ${new Date().toISOString()}: ${message}` })
+        .eq('id', shift.id);
+    } catch {}
     return shift;
   }
 }
@@ -206,6 +214,7 @@ export async function closeShift(
   options?: { onPhotoError?: (errors: PhotoUploadErrors) => void }
 ): Promise<Shift> {
   const photoErrors: PhotoUploadErrors = {};
+  const debugParts: string[] = [];
   const { data: current, error: fetchError } = await supabase
     .from('shifts')
     .select('*')
@@ -258,8 +267,10 @@ export async function closeShift(
       try {
         const receiptPath = await uploadShiftPhoto(shift.id, input.fuelReceiptUri, 'fuel-receipt');
         Object.assign(update, { fuel_receipt_url: receiptPath });
-      } catch (e) {
+        debugParts.push('fuel-receipt OK');
+      } catch (e: any) {
         console.warn('Motorin fişi yüklenemedi', e);
+        debugParts.push(`fuel-receipt FAILED: ${e?.message ?? String(e)}`);
       }
     }
   } else {
@@ -273,9 +284,11 @@ export async function closeShift(
     try {
       const path = await uploadShiftPhoto(shift.id, input.photoUri, 'closing');
       Object.assign(update, { closing_km_photo_url: path });
+      debugParts.push('closing OK');
     } catch (e: any) {
       console.warn('Kapanış fotoğrafı yüklenemedi', e);
       photoErrors.closing = e?.message ?? String(e);
+      debugParts.push(`closing FAILED: ${photoErrors.closing}`);
     }
   }
 
@@ -283,14 +296,20 @@ export async function closeShift(
     try {
       const notePath = await uploadShiftPhoto(shift.id, input.notesPhotoUri, 'notes');
       Object.assign(update, { notes_photo_url: notePath });
+      debugParts.push('notes OK');
     } catch (e: any) {
       console.warn('Not fotoğrafı yüklenemedi', e);
       photoErrors.notes = e?.message ?? String(e);
+      debugParts.push(`notes FAILED: ${photoErrors.notes}`);
     }
   }
 
   if (photoErrors.closing || photoErrors.notes) {
     options?.onPhotoError?.(photoErrors);
+  }
+
+  if (debugParts.length > 0) {
+    Object.assign(update, { photo_debug: `[v3] ${new Date().toISOString()} ${debugParts.join(' | ')}` });
   }
 
   const { data: updated, error } = await supabase
