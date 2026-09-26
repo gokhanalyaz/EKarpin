@@ -1,14 +1,18 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
-import { Pressable } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 
-import { ShiftHistoryCard } from '@/components/shift-history-list';
+import { ShiftHistoryCard, type SettlementInfo } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { queryShifts, type Shift } from '@/lib/shifts';
+import {
+  markShiftsDeliveredByDriver,
+  markShiftsReceivedByOwner,
+  queryShifts,
+  type Shift,
+} from '@/lib/shifts';
 import { listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
 import { listAssignedVehicles, listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
@@ -49,6 +53,11 @@ export default function HistoryScreen() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+
+  type SettlementFilter = 'all' | 'pending' | 'done';
+  const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [markingBusy, setMarkingBusy] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -119,12 +128,71 @@ export default function HistoryScreen() {
         to,
       });
       setShifts(result);
+      setSelectedIds(new Set());
     } catch (e) {
       console.warn('Karpin geçmişi yüklenemedi', e);
     } finally {
       setLoading(false);
     }
   }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, vehicles]);
+
+  function settlementAmount(s: Shift): number {
+    return s.payment_model === 'percentage' ? s.net_cash ?? 0 : s.km_debt ?? 0;
+  }
+
+  function isSettled(s: Shift): boolean {
+    return isOwner ? s.owner_confirmed_received_at != null : s.driver_marked_delivered_at != null;
+  }
+
+  const settlementTotals = useMemo(() => {
+    let pendingTotal = 0;
+    let doneTotal = 0;
+    let pendingCount = 0;
+    let doneCount = 0;
+    shifts.forEach((s) => {
+      if (isSettled(s)) {
+        doneTotal += settlementAmount(s);
+        doneCount += 1;
+      } else {
+        pendingTotal += settlementAmount(s);
+        pendingCount += 1;
+      }
+    });
+    return { pendingTotal, doneTotal, pendingCount, doneCount };
+  }, [shifts, isOwner]);
+
+  const visibleShifts = useMemo(() => {
+    if (settlementFilter === 'all') return shifts;
+    return shifts.filter((s) => (settlementFilter === 'done' ? isSettled(s) : !isSettled(s)));
+  }, [shifts, settlementFilter, isOwner]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBatchMark() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setMarkingBusy(true);
+    try {
+      if (isOwner) {
+        await markShiftsReceivedByOwner(ids);
+      } else {
+        await markShiftsDeliveredByDriver(ids);
+      }
+      await load();
+      Alert.alert('Kaydedildi', isOwner ? `${ids.length} karpin teslim alındı olarak işaretlendi.` : `${ids.length} karpin teslim edildi olarak işaretlendi.`);
+    } catch (e: any) {
+      Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setMarkingBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (vehiclesLoading) return;
@@ -199,24 +267,85 @@ export default function HistoryScreen() {
       )}
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Sonuçlar {loading ? '' : `(${shifts.length})`}
+        Teslim Durumu
+      </ThemedText>
+      <ThemedView style={styles.chipRow}>
+        <Chip label="Tümü" active={settlementFilter === 'all'} onPress={() => setSettlementFilter('all')} />
+        <Chip
+          label={isOwner ? 'Teslim Alınmayan' : 'Teslim Etmediğim'}
+          active={settlementFilter === 'pending'}
+          onPress={() => setSettlementFilter('pending')}
+        />
+        <Chip
+          label={isOwner ? 'Teslim Alınan' : 'Teslim Ettiğim'}
+          active={settlementFilter === 'done'}
+          onPress={() => setSettlementFilter('done')}
+        />
+      </ThemedView>
+
+      {!loading && shifts.length > 0 && (
+        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {settlementTotals.pendingCount} karpin ·{' '}
+            {settlementTotals.pendingTotal.toFixed(2)} ₺
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {isOwner ? 'Teslim alınan' : 'Teslim ettiğim'}: {settlementTotals.doneCount} karpin ·{' '}
+            {settlementTotals.doneTotal.toFixed(2)} ₺
+          </ThemedText>
+        </ThemedView>
+      )}
+
+      {selectedIds.size > 0 && (
+        <Pressable
+          style={({ pressed }) => [styles.batchButton, (markingBusy || pressed) && styles.buttonPressed]}
+          onPress={handleBatchMark}
+          disabled={markingBusy}>
+          <ThemedText style={styles.batchButtonText}>
+            {markingBusy
+              ? 'İşleniyor...'
+              : isOwner
+              ? `Teslim Aldım (${selectedIds.size})`
+              : `Teslim Ettim (${selectedIds.size})`}
+          </ThemedText>
+        </Pressable>
+      )}
+
+      <ThemedText type="smallBold" style={styles.sectionTitle}>
+        Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
       </ThemedText>
       {loading ? (
         <ActivityIndicator style={styles.loading} />
-      ) : shifts.length === 0 ? (
+      ) : visibleShifts.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
           Bu filtrelere uyan kapanmış vardiya yok.
         </ThemedText>
       ) : (
         <ThemedView style={styles.list}>
-          {shifts.map((s) => (
-            <ShiftHistoryCard
-              key={s.id}
-              shift={s}
-              driverName={driverNameById[s.driver_id]}
-              vehiclePlate={!selectedVehicleId ? vehiclePlateById[s.vehicle_id] : undefined}
-            />
-          ))}
+          {visibleShifts.map((s) => {
+            const done = isSettled(s);
+            const settlement: SettlementInfo = {
+              done,
+              label: done
+                ? isOwner
+                  ? 'Teslim Alındı'
+                  : 'Teslim Ettim'
+                : isOwner
+                ? 'Teslim Bekleniyor'
+                : 'Teslim Etmedim',
+              selected: selectedIds.has(s.id),
+              onToggleSelect: done ? undefined : () => toggleSelect(s.id),
+            };
+            return (
+              <ShiftHistoryCard
+                key={s.id}
+                shift={s}
+                driverName={driverNameById[s.driver_id]}
+                vehiclePlate={!selectedVehicleId ? vehiclePlateById[s.vehicle_id] : undefined}
+                settlement={settlement}
+              />
+            );
+          })}
         </ThemedView>
       )}
     </ScrollView>
@@ -250,4 +379,13 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, marginTop: Spacing.two },
   kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
+  batchButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    marginTop: Spacing.three,
+  },
+  batchButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonPressed: { opacity: 0.7 },
 });

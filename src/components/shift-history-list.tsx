@@ -37,22 +37,48 @@ function DetailRow({ label, value, emphasize }: { label: string; value: string; 
   );
 }
 
+export type SettlementInfo = {
+  /** Bu role gore (sahip: teslim aldi mi, sofor: teslim etti mi) tamamlanmis mi. */
+  done: boolean;
+  label: string;
+  /** Verilirse kartin basinda bir secim kutusu (checkbox) gosterilir. */
+  selected?: boolean;
+  onToggleSelect?: () => void;
+};
+
 type CardProps = {
   shift: Shift;
   driverName?: string;
   vehiclePlate?: string;
   /** false ise karta dokununca vardiya detayina gidilmez (detay ekraninin kendisinde kullanildiginda). */
   pressable?: boolean;
+  settlement?: SettlementInfo;
 };
 
 /** Kapanmis bir vardiyanin kalem kalem dokumu. Hem liste hem de tek vardiya detay ekraninda kullanilir. */
-export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable = true }: CardProps) {
+export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable = true, settlement }: CardProps) {
   const minutes = getShiftDurationMinutes(s.opened_at, s.closed_at);
   const isPercentage = s.payment_model === 'percentage';
   const hasCard = (s.card_amount ?? 0) > 0;
 
   const content = (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.card, settlement && !settlement.done && styles.cardUnsettled]}>
+      {settlement && (
+        <ThemedView style={styles.settlementRow}>
+          {settlement.onToggleSelect ? (
+            <Pressable onPress={settlement.onToggleSelect} style={styles.checkbox} hitSlop={8}>
+              <ThemedText>{settlement.selected ? '☑️' : '⬜️'}</ThemedText>
+            </Pressable>
+          ) : null}
+          <ThemedText
+            type="small"
+            style={[styles.settlementBadge, settlement.done ? styles.settlementDone : styles.settlementPending]}>
+            {settlement.label}
+          </ThemedText>
+        </ThemedView>
+      )}
       <ThemedText type="smallBold">
         {vehiclePlate ? `${vehiclePlate} · ` : ''}
         {driverName ?? 'Şoför'}
@@ -152,6 +178,12 @@ export function ShiftHistoryList({ vehicleId }: Props) {
 const styles = StyleSheet.create({
   list: { gap: Spacing.two },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
+  cardUnsettled: { borderWidth: 1.5, borderColor: '#F59E0B' },
+  settlementRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.half },
+  checkbox: { paddingVertical: Spacing.half },
+  settlementBadge: { paddingHorizontal: Spacing.two, paddingVertical: 2, borderRadius: Spacing.one, overflow: 'hidden' },
+  settlementDone: { backgroundColor: '#16A34A33', color: '#16A34A' },
+  settlementPending: { backgroundColor: '#F59E0B33', color: '#B45309' },
   dateLine: { marginBottom: Spacing.half },
   details: {
     borderRadius: Spacing.one,

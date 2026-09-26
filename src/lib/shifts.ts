@@ -418,6 +418,46 @@ export type ShiftQueryFilter = {
   limit?: number;
 };
 
+/** Şoför, seçtiği karpinleri "teslim ettim" olarak işaretler (kendi vardiyaları). */
+export async function markShiftsDeliveredByDriver(shiftIds: string[]): Promise<void> {
+  if (shiftIds.length === 0) return;
+  const { error } = await supabase
+    .from('shifts')
+    .update({ driver_marked_delivered_at: new Date().toISOString() })
+    .in('id', shiftIds);
+  if (error) throw error;
+}
+
+/** Şoför, "teslim ettim" işaretini geri alır. */
+export async function unmarkShiftsDeliveredByDriver(shiftIds: string[]): Promise<void> {
+  if (shiftIds.length === 0) return;
+  const { error } = await supabase
+    .from('shifts')
+    .update({ driver_marked_delivered_at: null })
+    .in('id', shiftIds);
+  if (error) throw error;
+}
+
+/** Araç sahibi, seçtiği karpinleri "teslim aldım" olarak işaretler (kendi araçlarının vardiyaları). */
+export async function markShiftsReceivedByOwner(shiftIds: string[]): Promise<void> {
+  if (shiftIds.length === 0) return;
+  const { error } = await supabase
+    .from('shifts')
+    .update({ owner_confirmed_received_at: new Date().toISOString() })
+    .in('id', shiftIds);
+  if (error) throw error;
+}
+
+/** Araç sahibi, "teslim aldım" işaretini geri alır. */
+export async function unmarkShiftsReceivedByOwner(shiftIds: string[]): Promise<void> {
+  if (shiftIds.length === 0) return;
+  const { error } = await supabase
+    .from('shifts')
+    .update({ owner_confirmed_received_at: null })
+    .in('id', shiftIds);
+  if (error) throw error;
+}
+
 /** Gecmis karpinleri (kapanmis vardiyalar) esnek filtrelerle sorgular; geçmiş/filtre ekrani icin. */
 export async function queryShifts(filter: ShiftQueryFilter): Promise<Shift[]> {
   let q = supabase
