@@ -151,6 +151,18 @@ export async function openShift(
   if (error) throw error;
 
   const shift = inserted as Shift;
+
+  // TESTING (gecici): openShift'e photoUri gercekten ulasiyor mu, kesin gormek icin.
+  supabase
+    .from('shifts')
+    .update({
+      photo_debug: input.photoUri
+        ? `[v4] photoUri var: ${String(input.photoUri).slice(0, 60)}`
+        : '[v4] photoUri NULL/bos geldi',
+    })
+    .eq('id', shift.id)
+    .then(() => {});
+
   if (!input.photoUri) {
     return shift;
   }
