@@ -197,6 +197,9 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
       <ThemedText type="title" style={styles.title}>
         Vardiya Kapat
       </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={{ opacity: 0.4 }}>
+        build-check: PD-04
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {vehicle.plate_no} · Açılış km: {shift.opening_km ?? '-'}
       </ThemedText>

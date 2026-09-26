@@ -106,6 +106,9 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
       <ThemedText type="title" style={styles.title}>
         Vardiya Aç
       </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={{ opacity: 0.4 }}>
+        build-check: PD-04
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {vehicle.plate_no}
       </ThemedText>
