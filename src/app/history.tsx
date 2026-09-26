@@ -58,8 +58,6 @@ export default function HistoryScreen() {
 
   type SettlementFilter = 'all' | 'pending' | 'done';
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [markingBusy, setMarkingBusy] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -130,7 +128,6 @@ export default function HistoryScreen() {
         to,
       });
       setShifts(result);
-      setSelectedIds(new Set());
     } catch (e) {
       console.warn('Karpin geçmişi yüklenemedi', e);
     } finally {
@@ -162,36 +159,16 @@ export default function HistoryScreen() {
     );
   }, [shifts, settlementFilter]);
 
-  function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function handleBatchMark() {
-    const selected = shifts.filter((s) => selectedIds.has(s.id));
-    if (selected.length === 0) return;
-    setMarkingBusy(true);
+  async function handleConfirmOne(shift: Shift) {
     try {
       if (isOwner) {
-        await markReceivedAndNotify(selected);
+        await markReceivedAndNotify([shift]);
       } else {
-        await markDeliveredAndNotify(selected, profile?.full_name ?? 'Bir şoför');
+        await markDeliveredAndNotify([shift], profile?.full_name ?? 'Bir şoför');
       }
       await load();
-      Alert.alert(
-        'Kaydedildi',
-        isOwner
-          ? `${selected.length} karpin teslim alındı olarak işaretlendi.`
-          : `${selected.length} karpin teslim edildi olarak işaretlendi, araç sahibine bildirim gönderildi.`
-      );
     } catch (e: any) {
       Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
-    } finally {
-      setMarkingBusy(false);
     }
   }
 
@@ -297,21 +274,6 @@ export default function HistoryScreen() {
         </ThemedView>
       )}
 
-      {selectedIds.size > 0 && (
-        <Pressable
-          style={({ pressed }) => [styles.batchButton, (markingBusy || pressed) && styles.buttonPressed]}
-          onPress={handleBatchMark}
-          disabled={markingBusy}>
-          <ThemedText style={styles.batchButtonText}>
-            {markingBusy
-              ? 'İşleniyor...'
-              : isOwner
-              ? `Teslim Aldım (${selectedIds.size})`
-              : `Teslim Ettim (${selectedIds.size})`}
-          </ThemedText>
-        </Pressable>
-      )}
-
       <ThemedText type="smallBold" style={styles.sectionTitle}>
         Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
       </ThemedText>
@@ -326,11 +288,16 @@ export default function HistoryScreen() {
           {visibleShifts.map((s) => {
             const state = getSettlementState(s);
             const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+            const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
             const settlement: SettlementInfo = {
               state,
               label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
-              selected: selectedIds.has(s.id),
-              onToggleSelect: canAct ? () => toggleSelect(s.id) : undefined,
+              onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
+              confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+              confirmMessage: isOwner
+                ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
+                : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+              confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
             };
             return (
               <ShiftHistoryCard

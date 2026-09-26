@@ -6,6 +6,7 @@ export type ShiftStatus = 'open' | 'closed';
 
 export type Shift = {
   id: string;
+  shift_no: number | null;
   vehicle_id: string;
   driver_id: string;
   payment_model: PaymentModel;

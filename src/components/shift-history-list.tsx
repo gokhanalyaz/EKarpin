@@ -42,9 +42,11 @@ function DetailRow({ label, value, emphasize }: { label: string; value: string; 
 export type SettlementInfo = {
   state: 'pending' | 'awaiting_confirmation' | 'confirmed';
   label: string;
-  /** Verilirse kartin basinda bir secim kutusu (checkbox) gosterilir. */
-  selected?: boolean;
-  onToggleSelect?: () => void;
+  /** Verilirse rozete dokununca hemen (Alert ile sorup) SADECE bu vardiyayi isaretler. */
+  onConfirm?: () => void;
+  confirmTitle?: string;
+  confirmMessage?: string;
+  confirmButtonLabel?: string;
 };
 
 type CardProps = {
@@ -75,21 +77,37 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
       ? styles.settlementAwaiting
       : styles.settlementPending;
 
+  function handleSettlementPress() {
+    if (!settlement?.onConfirm) return;
+    Alert.alert(
+      settlement.confirmTitle ?? 'Emin misiniz?',
+      settlement.confirmMessage,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: settlement.confirmButtonLabel ?? 'Evet', onPress: settlement.onConfirm },
+      ]
+    );
+  }
+
   const content = (
     <ThemedView type="backgroundElement" style={[styles.card, settlementCardStyle]}>
       {settlement && (
         <ThemedView style={styles.settlementRow}>
-          {settlement.onToggleSelect ? (
-            <Pressable onPress={settlement.onToggleSelect} style={styles.checkbox} hitSlop={8}>
-              <ThemedText>{settlement.selected ? '☑️' : '⬜️'}</ThemedText>
+          {settlement.onConfirm ? (
+            <Pressable onPress={handleSettlementPress} hitSlop={8}>
+              <ThemedText type="small" style={[styles.settlementBadge, settlementBadgeStyle]}>
+                {settlement.label} ›
+              </ThemedText>
             </Pressable>
-          ) : null}
-          <ThemedText type="small" style={[styles.settlementBadge, settlementBadgeStyle]}>
-            {settlement.label}
-          </ThemedText>
+          ) : (
+            <ThemedText type="small" style={[styles.settlementBadge, settlementBadgeStyle]}>
+              {settlement.label}
+            </ThemedText>
+          )}
         </ThemedView>
       )}
       <ThemedText type="smallBold">
+        {s.shift_no != null ? `#${s.shift_no} · ` : ''}
         {vehiclePlate ? `${vehiclePlate} · ` : ''}
         {driverName ?? 'Şoför'}
       </ThemedText>
@@ -146,8 +164,6 @@ export function ShiftHistoryList({ vehicleId }: Props) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [driverNames, setDriverNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
 
   const load = () => {
     return Promise.all([listVehicleShifts(vehicleId), listVehicleDrivers(vehicleId)]).then(
@@ -179,37 +195,16 @@ export function ShiftHistoryList({ vehicleId }: Props) {
     [shifts]
   );
 
-  function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function handleBatchMark() {
-    const selected = shifts.filter((s) => selectedIds.has(s.id));
-    if (selected.length === 0) return;
-    setBusy(true);
+  async function handleConfirmOne(shift: Shift) {
     try {
       if (isOwner) {
-        await markReceivedAndNotify(selected);
+        await markReceivedAndNotify([shift]);
       } else {
-        await markDeliveredAndNotify(selected, profile?.full_name ?? 'Bir şoför');
+        await markDeliveredAndNotify([shift], profile?.full_name ?? 'Bir şoför');
       }
-      setSelectedIds(new Set());
       await load();
-      Alert.alert(
-        'Kaydedildi',
-        isOwner
-          ? `${selected.length} karpin teslim alındı olarak işaretlendi.`
-          : `${selected.length} karpin teslim edildi olarak işaretlendi, araç sahibine bildirim gönderildi.`
-      );
     } catch (e: any) {
       Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -230,19 +225,10 @@ export function ShiftHistoryList({ vehicleId }: Props) {
           {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {pendingCount} karpin
         </ThemedText>
       )}
-      {selectedIds.size > 0 && (
-        <Pressable
-          style={({ pressed }) => [styles.batchButton, (busy || pressed) && styles.buttonPressed]}
-          onPress={handleBatchMark}
-          disabled={busy}>
-          <ThemedText style={styles.batchButtonText}>
-            {busy ? 'İşleniyor...' : isOwner ? `Teslim Aldım (${selectedIds.size})` : `Teslim Ettim (${selectedIds.size})`}
-          </ThemedText>
-        </Pressable>
-      )}
       {shifts.map((s) => {
         const state = getSettlementState(s);
         const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+        const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
         return (
           <ShiftHistoryCard
             key={s.id}
@@ -251,8 +237,12 @@ export function ShiftHistoryList({ vehicleId }: Props) {
             settlement={{
               state,
               label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
-              selected: selectedIds.has(s.id),
-              onToggleSelect: canAct ? () => toggleSelect(s.id) : undefined,
+              onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
+              confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+              confirmMessage: isOwner
+                ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
+                : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+              confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
             }}
           />
         );
