@@ -45,11 +45,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     if (!error && data) {
       setProfile(data as Profile);
-    } else {
-      // Profil bulunamadi (ornegin hesap silinmis) - gecersiz/eski bir
-      // oturumdur, uygulamanin sonsuza kadar yuklenmede takili kalmamasi
-      // icin oturumu kapatip girise donuyoruz.
+      return;
+    }
+
+    // 'PGRST116' = satir bulunamadi (Supabase'in .single() donen hatasi).
+    // Bu gercekten hesabin silindigi/artik gecersiz oldugu anlamina gelir,
+    // bu durumda oturumu kapatip girise donuyoruz. Baska bir hata (agi
+    // kopmasi, gecici sunucu hatasi vb.) icin oturumu KAPATMIYORUZ - aksi
+    // halde kullanici internet dalgalanmasi yuzunden habersizce disari
+    // atilmis olur.
+    if (error?.code === 'PGRST116') {
       await supabase.auth.signOut();
+    } else if (error) {
+      console.warn('Profil yuklenemedi (gecici hata olabilir):', error);
     }
   }
 
