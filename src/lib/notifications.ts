@@ -84,6 +84,13 @@ export async function sendPushNotification(
   }
 }
 
+/** Bir kullanicinin (soforun/sahibin) kayitli push token'ini dogrudan id ile getirir. */
+export async function getUserPushToken(userId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('profiles').select('push_token').eq('id', userId).maybeSingle();
+  if (error || !data) return null;
+  return (data as { push_token: string | null }).push_token ?? null;
+}
+
 /** Bir aracin sahibinin push token'ini getirir (kayitli degilse null). */
 export async function getOwnerPushToken(vehicleId: string): Promise<string | null> {
   const { data: vehicle, error: vehicleError } = await supabase

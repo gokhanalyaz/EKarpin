@@ -16,6 +16,13 @@ function handleNotificationData(data: Record<string, unknown> | undefined) {
     router.push(`/shift-detail/${data.shiftId}`);
   } else if (type === 'vehicle_alert' && typeof data.vehicleId === 'string') {
     router.push(`/vehicle/${data.vehicleId}`);
+  } else if (type === 'settlement_pending' && typeof data.vehicleId === 'string') {
+    // Sofor teslim ettigini bildirdi - arac sahibi onaylasin diye arac
+    // detay sayfasina goturuyoruz (orada teslim alinmayanlari isaretleyebilir).
+    router.push(`/vehicle/${data.vehicleId}`);
+  } else if (type === 'settlement_confirmed' && typeof data.vehicleId === 'string') {
+    // Arac sahibi teslimi onayladi - sofore kendi vardiya ekranini gosteriyoruz.
+    router.push(`/shift/${data.vehicleId}`);
   }
 }
 

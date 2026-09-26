@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
+import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 
 type Props = {
@@ -38,8 +40,7 @@ function DetailRow({ label, value, emphasize }: { label: string; value: string; 
 }
 
 export type SettlementInfo = {
-  /** Bu role gore (sahip: teslim aldi mi, sofor: teslim etti mi) tamamlanmis mi. */
-  done: boolean;
+  state: 'pending' | 'awaiting_confirmation' | 'confirmed';
   label: string;
   /** Verilirse kartin basinda bir secim kutusu (checkbox) gosterilir. */
   selected?: boolean;
@@ -61,10 +62,21 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
   const isPercentage = s.payment_model === 'percentage';
   const hasCard = (s.card_amount ?? 0) > 0;
 
+  const settlementCardStyle =
+    settlement?.state === 'pending'
+      ? styles.cardPending
+      : settlement?.state === 'awaiting_confirmation'
+      ? styles.cardAwaiting
+      : undefined;
+  const settlementBadgeStyle =
+    settlement?.state === 'confirmed'
+      ? styles.settlementDone
+      : settlement?.state === 'awaiting_confirmation'
+      ? styles.settlementAwaiting
+      : styles.settlementPending;
+
   const content = (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.card, settlement && !settlement.done && styles.cardUnsettled]}>
+    <ThemedView type="backgroundElement" style={[styles.card, settlementCardStyle]}>
       {settlement && (
         <ThemedView style={styles.settlementRow}>
           {settlement.onToggleSelect ? (
@@ -72,9 +84,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
               <ThemedText>{settlement.selected ? '☑️' : '⬜️'}</ThemedText>
             </Pressable>
           ) : null}
-          <ThemedText
-            type="small"
-            style={[styles.settlementBadge, settlement.done ? styles.settlementDone : styles.settlementPending]}>
+          <ThemedText type="small" style={[styles.settlementBadge, settlementBadgeStyle]}>
             {settlement.label}
           </ThemedText>
         </ThemedView>
@@ -131,22 +141,30 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
 }
 
 export function ShiftHistoryList({ vehicleId }: Props) {
+  const { profile } = useAuth();
+  const isOwner = profile?.role === 'owner';
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [driverNames, setDriverNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([listVehicleShifts(vehicleId), listVehicleDrivers(vehicleId)])
-      .then(([shiftRows, driverRows]) => {
-        if (cancelled) return;
+  const load = () => {
+    return Promise.all([listVehicleShifts(vehicleId), listVehicleDrivers(vehicleId)]).then(
+      ([shiftRows, driverRows]) => {
         setShifts(shiftRows.filter((s) => s.status === 'closed'));
         const map: Record<string, string> = {};
         driverRows.forEach((row) => {
           map[row.driver_id] = row.driver?.full_name ?? 'İsimsiz';
         });
         setDriverNames(map);
-      })
+      }
+    );
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    load()
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -155,6 +173,45 @@ export function ShiftHistoryList({ vehicleId }: Props) {
       cancelled = true;
     };
   }, [vehicleId]);
+
+  const pendingCount = useMemo(
+    () => shifts.filter((s) => getSettlementState(s) !== 'confirmed').length,
+    [shifts]
+  );
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBatchMark() {
+    const selected = shifts.filter((s) => selectedIds.has(s.id));
+    if (selected.length === 0) return;
+    setBusy(true);
+    try {
+      if (isOwner) {
+        await markReceivedAndNotify(selected);
+      } else {
+        await markDeliveredAndNotify(selected, profile?.full_name ?? 'Bir şoför');
+      }
+      setSelectedIds(new Set());
+      await load();
+      Alert.alert(
+        'Kaydedildi',
+        isOwner
+          ? `${selected.length} karpin teslim alındı olarak işaretlendi.`
+          : `${selected.length} karpin teslim edildi olarak işaretlendi, araç sahibine bildirim gönderildi.`
+      );
+    } catch (e: any) {
+      Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading) return null;
 
@@ -168,21 +225,60 @@ export function ShiftHistoryList({ vehicleId }: Props) {
 
   return (
     <ThemedView style={styles.list}>
-      {shifts.map((s) => (
-        <ShiftHistoryCard key={s.id} shift={s} driverName={driverNames[s.driver_id]} />
-      ))}
+      {pendingCount > 0 && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {pendingCount} karpin
+        </ThemedText>
+      )}
+      {selectedIds.size > 0 && (
+        <Pressable
+          style={({ pressed }) => [styles.batchButton, (busy || pressed) && styles.buttonPressed]}
+          onPress={handleBatchMark}
+          disabled={busy}>
+          <ThemedText style={styles.batchButtonText}>
+            {busy ? 'İşleniyor...' : isOwner ? `Teslim Aldım (${selectedIds.size})` : `Teslim Ettim (${selectedIds.size})`}
+          </ThemedText>
+        </Pressable>
+      )}
+      {shifts.map((s) => {
+        const state = getSettlementState(s);
+        const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+        return (
+          <ShiftHistoryCard
+            key={s.id}
+            shift={s}
+            driverName={driverNames[s.driver_id]}
+            settlement={{
+              state,
+              label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
+              selected: selectedIds.has(s.id),
+              onToggleSelect: canAct ? () => toggleSelect(s.id) : undefined,
+            }}
+          />
+        );
+      })}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   list: { gap: Spacing.two },
+  batchButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  batchButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonPressed: { opacity: 0.7 },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
-  cardUnsettled: { borderWidth: 1.5, borderColor: '#F59E0B' },
+  cardPending: { borderWidth: 1.5, borderColor: '#F59E0B' },
+  cardAwaiting: { borderWidth: 1.5, borderColor: '#2563EB' },
   settlementRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.half },
   checkbox: { paddingVertical: Spacing.half },
   settlementBadge: { paddingHorizontal: Spacing.two, paddingVertical: 2, borderRadius: Spacing.one, overflow: 'hidden' },
   settlementDone: { backgroundColor: '#16A34A33', color: '#16A34A' },
+  settlementAwaiting: { backgroundColor: '#2563EB33', color: '#1D4ED8' },
   settlementPending: { backgroundColor: '#F59E0B33', color: '#B45309' },
   dateLine: { marginBottom: Spacing.half },
   details: {

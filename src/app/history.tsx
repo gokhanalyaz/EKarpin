@@ -7,12 +7,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { queryShifts, type Shift } from '@/lib/shifts';
 import {
-  markShiftsDeliveredByDriver,
-  markShiftsReceivedByOwner,
-  queryShifts,
-  type Shift,
-} from '@/lib/shifts';
+  getSettlementLabel,
+  getSettlementState,
+  markDeliveredAndNotify,
+  markReceivedAndNotify,
+  settlementAmount,
+} from '@/lib/settlement';
 import { listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
 import { listAssignedVehicles, listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
@@ -136,21 +138,13 @@ export default function HistoryScreen() {
     }
   }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, vehicles]);
 
-  function settlementAmount(s: Shift): number {
-    return s.payment_model === 'percentage' ? s.net_cash ?? 0 : s.km_debt ?? 0;
-  }
-
-  function isSettled(s: Shift): boolean {
-    return isOwner ? s.owner_confirmed_received_at != null : s.driver_marked_delivered_at != null;
-  }
-
   const settlementTotals = useMemo(() => {
     let pendingTotal = 0;
     let doneTotal = 0;
     let pendingCount = 0;
     let doneCount = 0;
     shifts.forEach((s) => {
-      if (isSettled(s)) {
+      if (getSettlementState(s) === 'confirmed') {
         doneTotal += settlementAmount(s);
         doneCount += 1;
       } else {
@@ -159,12 +153,14 @@ export default function HistoryScreen() {
       }
     });
     return { pendingTotal, doneTotal, pendingCount, doneCount };
-  }, [shifts, isOwner]);
+  }, [shifts]);
 
   const visibleShifts = useMemo(() => {
     if (settlementFilter === 'all') return shifts;
-    return shifts.filter((s) => (settlementFilter === 'done' ? isSettled(s) : !isSettled(s)));
-  }, [shifts, settlementFilter, isOwner]);
+    return shifts.filter((s) =>
+      settlementFilter === 'done' ? getSettlementState(s) === 'confirmed' : getSettlementState(s) !== 'confirmed'
+    );
+  }, [shifts, settlementFilter]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -176,17 +172,22 @@ export default function HistoryScreen() {
   }
 
   async function handleBatchMark() {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    const selected = shifts.filter((s) => selectedIds.has(s.id));
+    if (selected.length === 0) return;
     setMarkingBusy(true);
     try {
       if (isOwner) {
-        await markShiftsReceivedByOwner(ids);
+        await markReceivedAndNotify(selected);
       } else {
-        await markShiftsDeliveredByDriver(ids);
+        await markDeliveredAndNotify(selected, profile?.full_name ?? 'Bir şoför');
       }
       await load();
-      Alert.alert('Kaydedildi', isOwner ? `${ids.length} karpin teslim alındı olarak işaretlendi.` : `${ids.length} karpin teslim edildi olarak işaretlendi.`);
+      Alert.alert(
+        'Kaydedildi',
+        isOwner
+          ? `${selected.length} karpin teslim alındı olarak işaretlendi.`
+          : `${selected.length} karpin teslim edildi olarak işaretlendi, araç sahibine bildirim gönderildi.`
+      );
     } catch (e: any) {
       Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
     } finally {
@@ -323,18 +324,13 @@ export default function HistoryScreen() {
       ) : (
         <ThemedView style={styles.list}>
           {visibleShifts.map((s) => {
-            const done = isSettled(s);
+            const state = getSettlementState(s);
+            const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
             const settlement: SettlementInfo = {
-              done,
-              label: done
-                ? isOwner
-                  ? 'Teslim Alındı'
-                  : 'Teslim Ettim'
-                : isOwner
-                ? 'Teslim Bekleniyor'
-                : 'Teslim Etmedim',
+              state,
+              label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
               selected: selectedIds.has(s.id),
-              onToggleSelect: done ? undefined : () => toggleSelect(s.id),
+              onToggleSelect: canAct ? () => toggleSelect(s.id) : undefined,
             };
             return (
               <ShiftHistoryCard
