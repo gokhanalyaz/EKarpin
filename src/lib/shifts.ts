@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import { supabase } from '@/lib/supabase';
 import type { PaymentModel, Vehicle } from '@/lib/vehicles';
 
@@ -47,15 +48,21 @@ export async function uploadShiftPhoto(
   suffix?: string
 ): Promise<string> {
   const path = suffix ? `${shiftId}/${kind}-${suffix}.jpg` : `${shiftId}/${kind}.jpg`;
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const arrayBuffer = await new Response(blob).arrayBuffer();
+
+  const file = new File(uri);
+  if (!file.exists) {
+    throw new Error(`Fotoğraf dosyası bulunamadı (uri: ${uri})`);
+  }
+  const arrayBuffer = await file.arrayBuffer();
+  if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+    throw new Error('Fotoğraf dosyası boş okundu (0 byte).');
+  }
 
   const { error } = await supabase.storage
     .from('shift-photos')
     .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
 
-  if (error) throw error;
+  if (error) throw new Error(`Supabase yükleme hatası: ${error.message}`);
   return path;
 }
 
