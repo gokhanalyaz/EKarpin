@@ -107,7 +107,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
         </ThemedView>
       )}
       <ThemedText type="smallBold">
-        {s.shift_no != null ? `#${s.shift_no} · ` : ''}
+        {s.shift_no != null ? `Karpin No: ${s.shift_no} · ` : ''}
         {vehiclePlate ? `${vehiclePlate} · ` : ''}
         {driverName ?? 'Şoför'}
       </ThemedText>
