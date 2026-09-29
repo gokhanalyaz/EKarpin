@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -190,6 +190,15 @@ export function ShiftHistoryList({ vehicleId }: Props) {
     };
   }, [vehicleId]);
 
+  // Ekran her odaklandığında (bildirime dokununca, ya da uygulamaya geri
+  // dönünce) listeyi sessizce (loading gösterip yanıp sönmeden) tazele ki
+  // şoförün az önce "teslim ettim" işaretlemesi hemen görünsün.
+  useFocusEffect(
+    useCallback(() => {
+      load().catch(() => {});
+    }, [vehicleId])
+  );
+
   const pendingCount = useMemo(
     () => shifts.filter((s) => getSettlementState(s) !== 'confirmed').length,
     [shifts]
@@ -262,8 +271,8 @@ const styles = StyleSheet.create({
   batchButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   buttonPressed: { opacity: 0.7 },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
-  cardPending: { borderWidth: 1.5, borderColor: '#F59E0B' },
-  cardAwaiting: { borderWidth: 1.5, borderColor: '#2563EB' },
+  cardPending: { borderWidth: 1.5, borderColor: '#F59E0B', backgroundColor: '#F59E0B14' },
+  cardAwaiting: { borderWidth: 2, borderColor: '#2563EB', backgroundColor: '#2563EB1F' },
   settlementRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.half },
   checkbox: { paddingVertical: Spacing.half },
   settlementBadge: { paddingHorizontal: Spacing.two, paddingVertical: 2, borderRadius: Spacing.one, overflow: 'hidden' },
