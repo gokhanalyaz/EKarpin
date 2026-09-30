@@ -46,10 +46,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
   const isPercentage = vehicle.payment_model === 'percentage';
 
-  const enabledExpenseCategoryKeys =
-    vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
-      ? vehicle.enabled_expense_categories
-      : DEFAULT_EXPENSE_CATEGORIES;
+  const enabledExpenseCategoryKeys = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
   const enabledExpenseCategories = EXPENSE_CATEGORIES.filter((c) =>
     enabledExpenseCategoryKeys.includes(c.key)
   );
@@ -380,9 +377,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             </>
           )}
 
+          {enabledExpenseCategories.length > 0 && (
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Diğer Masraflar
           </ThemedText>
+          )}
           {enabledExpenseCategories.map((cat) => (
             <ThemedView key={cat.key} style={styles.expenseRow}>
               <ThemedText type="small" style={styles.expenseLabel}>

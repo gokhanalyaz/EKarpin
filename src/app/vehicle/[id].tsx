@@ -112,10 +112,7 @@ export default function VehicleDetailScreen() {
 
   async function handleToggleExpenseCategory(key: string) {
     if (!vehicle) return;
-    const current =
-      vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
-        ? vehicle.enabled_expense_categories
-        : DEFAULT_EXPENSE_CATEGORIES;
+    const current = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     setVehicle({ ...vehicle, enabled_expense_categories: next });
     try {
@@ -180,10 +177,7 @@ export default function VehicleDetailScreen() {
             </ThemedText>
             <ThemedView style={styles.expenseChipRow}>
               {EXPENSE_CATEGORIES.map((cat) => {
-                const keys =
-                  vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
-                    ? vehicle.enabled_expense_categories
-                    : DEFAULT_EXPENSE_CATEGORIES;
+                const keys = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
                 const enabled = keys.includes(cat.key);
                 return (
                   <Pressable
