@@ -1,11 +1,39 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { setKvkkAccepted } from '@/lib/kvkk-consent';
+
+const SCROLL_END_THRESHOLD = 24;
 
 export default function KvkkScreen() {
+  const [reachedEnd, setReachedEnd] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(0);
+
+  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (reachedEnd) return;
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceToBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceToBottom <= SCROLL_END_THRESHOLD) {
+      setReachedEnd(true);
+    }
+  }
+
+  function handleContentSizeChange(_w: number, contentHeight: number) {
+    // Metin ekrana sigiyorsa (kaydirmaya gerek yoksa) direkt onaya izin ver.
+    if (viewportHeight > 0 && contentHeight <= viewportHeight + SCROLL_END_THRESHOLD) {
+      setReachedEnd(true);
+    }
+  }
+
+  function handleApprove() {
+    setKvkkAccepted(true);
+    router.back();
+  }
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
@@ -15,7 +43,12 @@ export default function KvkkScreen() {
         </Pressable>
       </ThemedView>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={32}>
         <ThemedText type="smallBold">1. Veri Sorumlusu</ThemedText>
         <ThemedText style={styles.paragraph}>
           Dijital Karpin ("Uygulama") olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu
@@ -52,7 +85,21 @@ export default function KvkkScreen() {
           ve veri sorumlusunun meşru menfaati hukuki sebeplerine dayanılarak işlenmektedir.
         </ThemedText>
 
-        <ThemedText type="smallBold">6. Haklarınız</ThemedText>
+        <ThemedText type="smallBold">6. Üçüncü Kişilerle Paylaşım İçin Açık Rıza</ThemedText>
+        <ThemedText style={styles.paragraph}>
+          Uygulama üzerinden gelecekte sunulabilecek ek hizmetler (örneğin; mazot/gider
+          fişlerinizin veya günlük hasılat raporlarınızın esnaf/şoförler odası muhasebesine ya da
+          kendi belirlediğiniz mali müşavirinize aktarılması; araç bakım, taksimetre, telsiz veya
+          POS cihazı tedarikçisi gibi hizmet sağlayıcılara randevu/arıza talebi oluşturulması)
+          yalnızca sizin açık talebiniz ve yetkilendirmeniz üzerine devreye girer. Bu tür bir
+          hizmeti kullanmayı tercih ettiğinizde, o hizmetin gerektirdiği kişisel verilerin
+          (ör. ilgili plakaya ait fişler, iletişim bilgileriniz) ilgili üçüncü kişi/kurumla, yalnızca
+          o talebi karşılamak amacıyla paylaşılmasına açık rıza göstermiş olursunuz. Bu onayı,
+          söz konusu hizmeti hiç kullanmayarak fiilen devre dışı bırakabilir; ilgili talebi
+          oluşturmadığınız sürece verileriniz bu şekilde hiçbir üçüncü kişiyle paylaşılmaz.
+        </ThemedText>
+
+        <ThemedText type="smallBold">7. Haklarınız</ThemedText>
         <ThemedText style={styles.paragraph}>
           KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme,
           işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve amacına uygun kullanılıp
@@ -66,6 +113,26 @@ export default function KvkkScreen() {
           edilmesi önerilir.
         </ThemedText>
       </ScrollView>
+
+      <ThemedView style={styles.footer}>
+        {!reachedEnd && (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.footerHint}>
+            Onaylamak için lütfen metnin sonuna kadar kaydırın.
+          </ThemedText>
+        )}
+        <Pressable
+          style={({ pressed }) => [
+            styles.approveButton,
+            !reachedEnd && styles.approveButtonDisabled,
+            pressed && reachedEnd && styles.buttonPressed,
+          ]}
+          disabled={!reachedEnd}
+          onPress={handleApprove}>
+          <ThemedText type="linkPrimary" style={styles.approveButtonText}>
+            Okudum, Onaylıyorum
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -81,4 +148,15 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: Spacing.six, gap: Spacing.two },
   paragraph: { marginBottom: Spacing.three, lineHeight: 20 },
   note: { marginTop: Spacing.two, fontStyle: 'italic' },
+  footer: { paddingTop: Spacing.two, paddingBottom: Spacing.four, gap: Spacing.two },
+  footerHint: { textAlign: 'center' },
+  approveButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  approveButtonDisabled: { opacity: 0.4 },
+  approveButtonText: { color: '#fff', fontWeight: '700' },
+  buttonPressed: { opacity: 0.7 },
 });

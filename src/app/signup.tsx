@@ -1,5 +1,5 @@
-import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { Link, router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import type { UserRole } from '@/contexts/auth-context';
 import { normalizePhone } from '@/lib/format';
+import { consumeKvkkAccepted } from '@/lib/kvkk-consent';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -30,6 +31,14 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [kvkkAccepted, setKvkkAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (consumeKvkkAccepted()) {
+        setKvkkAccepted(true);
+      }
+    }, [])
+  );
 
   async function handleSignup() {
     if (!firstName.trim() || !lastName.trim()) {
@@ -72,6 +81,7 @@ export default function SignupScreen() {
           role,
           full_name: fullName,
           phone: normalizedPhone,
+          kvkk_accepted_at: new Date().toISOString(),
         },
       },
     });
@@ -147,7 +157,7 @@ export default function SignupScreen() {
             placeholder="Şifre (tekrar)"
           />
 
-          <Pressable style={styles.kvkkRow} onPress={() => setKvkkAccepted((v) => !v)}>
+          <Pressable style={styles.kvkkRow} onPress={() => router.push('/kvkk')}>
             <ThemedView
               style={[
                 styles.checkbox,
@@ -157,11 +167,9 @@ export default function SignupScreen() {
               {kvkkAccepted && <ThemedText style={styles.checkboxMark}>✓</ThemedText>}
             </ThemedView>
             <ThemedText type="small" style={styles.kvkkText}>
-              <Link href="/kvkk">
-                <ThemedText type="linkPrimary" style={styles.kvkkLink}>
-                  KVKK Aydınlatma Metni
-                </ThemedText>
-              </Link>
+              <ThemedText type="linkPrimary" style={styles.kvkkLink}>
+                KVKK Aydınlatma Metni
+              </ThemedText>
               {"'ni okudum, kabul ediyorum."}
             </ThemedText>
           </Pressable>
