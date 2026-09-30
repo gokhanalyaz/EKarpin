@@ -26,6 +26,7 @@ export type Shift = {
   fuel_receipt_url: string | null;
   other_expenses: number | null;
   other_expenses_note: string | null;
+  expense_items: { category: string; amount: number; note?: string }[] | null;
   driver_share: number | null;
   card_amount: number | null;
 
@@ -209,6 +210,8 @@ export type CloseShiftInput = {
   fuelReceiptUri?: string;
   otherExpenses?: number;
   otherExpensesNote?: string;
+  /** Verilirse otherExpenses/otherExpensesNote yerine bunlarin toplami/dokumu kullanilir. */
+  expenseItems?: { category: string; amount: number; note?: string }[];
   cardAmount?: number;
   notes?: string;
   notesPhotoUri?: string | null;
@@ -280,7 +283,12 @@ export async function closeShift(
   if (shift.payment_model === 'percentage') {
     const totalAmount = input.totalAmount ?? 0;
     const fuelCost = input.fuelCost ?? 0;
-    const otherExpenses = input.otherExpenses ?? 0;
+    const otherExpenses = input.expenseItems
+      ? input.expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+      : input.otherExpenses ?? 0;
+    const otherExpensesNote = input.expenseItems
+      ? input.expenseItems.find((item) => item.category === 'diger' && item.note)?.note ?? null
+      : input.otherExpensesNote ?? null;
     const cardAmount = input.cardAmount ?? 0;
     const percentageRate = input.vehicle.percentage_rate ?? 25;
 
@@ -295,7 +303,8 @@ export async function closeShift(
       total_amount: totalAmount,
       fuel_cost: fuelCost,
       other_expenses: otherExpenses,
-      other_expenses_note: input.otherExpensesNote ?? null,
+      other_expenses_note: otherExpensesNote,
+      expense_items: input.expenseItems ?? null,
       card_amount: cardAmount,
       driver_share: driverShare,
       net_cash: netCash,

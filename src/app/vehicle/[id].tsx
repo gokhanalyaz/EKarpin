@@ -27,7 +27,8 @@ import {
   setDriverDailyKmLimit,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { getVehicle, type Vehicle } from '@/lib/vehicles';
+import { getVehicle, setEnabledExpenseCategories, type Vehicle } from '@/lib/vehicles';
+import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '@/lib/expense-categories';
 
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -109,6 +110,22 @@ export default function VehicleDetailScreen() {
     }
   }
 
+  async function handleToggleExpenseCategory(key: string) {
+    if (!vehicle) return;
+    const current =
+      vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
+        ? vehicle.enabled_expense_categories
+        : DEFAULT_EXPENSE_CATEGORIES;
+    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+    setVehicle({ ...vehicle, enabled_expense_categories: next });
+    try {
+      await setEnabledExpenseCategories(vehicle.id, next);
+    } catch (e: any) {
+      setVehicle({ ...vehicle, enabled_expense_categories: current });
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
+  }
+
   async function handleSaveLimit(row: VehicleDriverRow) {
     const raw = limitInputs[row.id] ?? '';
     const parsed = raw.trim() ? Number(raw.replace(',', '.')) : null;
@@ -152,6 +169,41 @@ export default function VehicleDetailScreen() {
         </ThemedText>
 
         <VehicleAlertList vehicleId={vehicle.id} />
+
+        {vehicle.payment_model === 'percentage' && (
+          <>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              Gider Kategorileri
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Şoför vardiya kapatırken hangi masraf kalemlerini görsün?
+            </ThemedText>
+            <ThemedView style={styles.expenseChipRow}>
+              {EXPENSE_CATEGORIES.map((cat) => {
+                const keys =
+                  vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
+                    ? vehicle.enabled_expense_categories
+                    : DEFAULT_EXPENSE_CATEGORIES;
+                const enabled = keys.includes(cat.key);
+                return (
+                  <Pressable
+                    key={cat.key}
+                    onPress={() => handleToggleExpenseCategory(cat.key)}
+                    style={[
+                      styles.expenseChip,
+                      { borderColor: theme.backgroundSelected },
+                      enabled && styles.expenseChipOn,
+                    ]}>
+                    <ThemedText type="small" style={enabled ? styles.expenseChipTextOn : undefined}>
+                      {enabled ? '✓ ' : ''}
+                      {cat.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ThemedView>
+          </>
+        )}
 
         <ThemedText type="smallBold" style={styles.sectionTitle}>
           Şoförler
@@ -265,6 +317,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   kmLimitSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
+  expenseChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two, marginBottom: Spacing.two },
+  expenseChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999, borderWidth: 1 },
+  expenseChipOn: { backgroundColor: '#2563EB1F', borderColor: '#2563EB' },
+  expenseChipTextOn: { color: '#1D4ED8', fontWeight: '700' },
   hint: { marginBottom: Spacing.one },
   button: {
     backgroundColor: '#208AEF',

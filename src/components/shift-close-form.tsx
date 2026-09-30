@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { closeShift, formatDuration, getShiftDurationMinutes, getUsedKmDiscountToday, type Shift } from '@/lib/shifts';
 import { getOwnerPushToken, sendPushNotification } from '@/lib/notifications';
 import { getDriverDailyKmLimit, listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
+import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES, type ExpenseItem } from '@/lib/expense-categories';
 import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
@@ -30,8 +31,8 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
   const [totalAmount, setTotalAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [fuelCost, setFuelCost] = useState('');
-  const [otherExpenses, setOtherExpenses] = useState('');
-  const [otherExpensesNote, setOtherExpensesNote] = useState('');
+  const [expenseAmounts, setExpenseAmounts] = useState<Record<string, string>>({});
+  const [expenseNote, setExpenseNote] = useState('');
   const [fuelReceiptUri, setFuelReceiptUri] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [showNotePhoto, setShowNotePhoto] = useState(false);
@@ -44,6 +45,14 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
   const [kmDiscountNote, setKmDiscountNote] = useState('');
 
   const isPercentage = vehicle.payment_model === 'percentage';
+
+  const enabledExpenseCategoryKeys =
+    vehicle.enabled_expense_categories && vehicle.enabled_expense_categories.length > 0
+      ? vehicle.enabled_expense_categories
+      : DEFAULT_EXPENSE_CATEGORIES;
+  const enabledExpenseCategories = EXPENSE_CATEGORIES.filter((c) =>
+    enabledExpenseCategoryKeys.includes(c.key)
+  );
 
   useEffect(() => {
     listVehicleDrivers(vehicle.id)
@@ -76,7 +85,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
     return Number.isFinite(n) ? n : 0;
   }
 
-  const base = num(totalAmount) - num(fuelCost) - num(otherExpenses);
+  const otherExpensesTotal = enabledExpenseCategories.reduce(
+    (sum, cat) => sum + num(expenseAmounts[cat.key] ?? ''),
+    0
+  );
+  const base = num(totalAmount) - num(fuelCost) - otherExpensesTotal;
   const driverShare = isPercentage ? base * ((vehicle.percentage_rate ?? 25) / 100) : 0;
   // Toplam (nakit + kredi karti) once hesaplanir, nakit kismi bundan kredi
   // kartinin cikarilmasiyla bulunur (kredi karti, hasilatin bir PARCASIdir).
@@ -178,8 +191,19 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
           totalAmount: isPercentage ? num(totalAmount) : undefined,
           fuelCost: isPercentage ? num(fuelCost) : undefined,
           fuelReceiptUri: isPercentage && fuelReceiptUri ? fuelReceiptUri : undefined,
-          otherExpenses: isPercentage ? num(otherExpenses) : undefined,
-          otherExpensesNote: isPercentage && otherExpensesNote.trim() ? otherExpensesNote.trim() : undefined,
+          expenseItems: isPercentage
+            ? (enabledExpenseCategories
+                .map((cat): ExpenseItem | null => {
+                  const amount = num(expenseAmounts[cat.key] ?? '');
+                  if (amount <= 0) return null;
+                  return {
+                    category: cat.key,
+                    amount,
+                    note: cat.key === 'diger' && expenseNote.trim() ? expenseNote.trim() : undefined,
+                  };
+                })
+                .filter((item): item is ExpenseItem => item !== null))
+            : undefined,
           cardAmount: isPercentage ? num(cardAmount) : undefined,
           notes: notes.trim() ? notes.trim() : undefined,
           notesPhotoUri: notePhotoUri,
@@ -359,27 +383,43 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Diğer Masraflar
           </ThemedText>
-          <TextInput
-            style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-            placeholder="₺"
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="decimal-pad"
-            value={otherExpenses}
-            onChangeText={setOtherExpenses}
-          />
-          {otherExpenses.trim().length > 0 && (
+          {enabledExpenseCategories.map((cat) => (
+            <ThemedView key={cat.key} style={styles.expenseRow}>
+              <ThemedText type="small" style={styles.expenseLabel}>
+                {cat.label}
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.expenseInput,
+                  { color: theme.text, borderColor: theme.backgroundSelected },
+                ]}
+                placeholder="₺"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={expenseAmounts[cat.key] ?? ''}
+                onChangeText={(v) => setExpenseAmounts((prev) => ({ ...prev, [cat.key]: v }))}
+              />
+            </ThemedView>
+          ))}
+          {(expenseAmounts['diger'] ?? '').trim().length > 0 && (
             <TextInput
               style={[
                 styles.input,
                 styles.noteInput,
                 { color: theme.text, borderColor: theme.backgroundSelected },
               ]}
-              placeholder="Bu masraf ne içindi? (örn. lastik tamiri)"
+              placeholder="Diğer masraf ne içindi? (örn. lastik tamiri)"
               placeholderTextColor={theme.textSecondary}
-              value={otherExpensesNote}
-              onChangeText={setOtherExpensesNote}
+              value={expenseNote}
+              onChangeText={setExpenseNote}
               multiline
             />
+          )}
+          {otherExpensesTotal > 0 && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+              Toplam diğer masraf: {otherExpensesTotal.toFixed(2)} ₺
+            </ThemedText>
           )}
 
           <ThemedView type="backgroundElement" style={styles.summary}>
@@ -527,6 +567,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   noteInput: { minHeight: 72, textAlignVertical: 'top' },
+  expenseRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.one },
+  expenseLabel: { flex: 1 },
+  expenseInput: { flex: 0, width: 100, marginBottom: 0 },
   summary: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
   preview: { width: '100%', height: 200, borderRadius: Spacing.two, marginTop: Spacing.two },
   receiptPreview: { width: '100%', height: 160, borderRadius: Spacing.two, marginTop: Spacing.two },

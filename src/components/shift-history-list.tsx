@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
+import { expenseCategoryLabel } from '@/lib/expense-categories';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 
@@ -125,7 +126,20 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
             <DetailRow label="Hasılat (Tutar)" value={formatTL(s.total_amount)} />
             {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
             <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} />
-            <DetailRow label="Diğer Masraf" value={formatTL(s.other_expenses)} />
+            {s.expense_items && s.expense_items.length > 0 ? (
+              <>
+                {s.expense_items.map((item, idx) => (
+                  <DetailRow
+                    key={idx}
+                    label={expenseCategoryLabel(item.category)}
+                    value={formatTL(item.amount)}
+                  />
+                ))}
+                <DetailRow label="Toplam Diğer Masraf" value={formatTL(s.other_expenses)} emphasize />
+              </>
+            ) : (
+              <DetailRow label="Diğer Masraf" value={formatTL(s.other_expenses)} />
+            )}
             {s.other_expenses_note ? (
               <DetailRow label="Masraf Notu" value={s.other_expenses_note} />
             ) : null}

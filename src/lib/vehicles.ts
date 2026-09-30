@@ -10,6 +10,7 @@ export type Vehicle = {
   percentage_rate: number | null;
   km_rate: number | null;
   created_at: string;
+  enabled_expense_categories: string[] | null;
 };
 
 export async function listOwnerVehicles(ownerId: string): Promise<Vehicle[]> {
@@ -64,4 +65,16 @@ export async function getVehicle(id: string): Promise<Vehicle> {
   const { data, error } = await supabase.from('vehicles').select('*').eq('id', id).single();
   if (error) throw error;
   return data as Vehicle;
+}
+
+/** Arac sahibi, bu aracta hangi gider kategorilerinin sofore acik olacagini belirler. */
+export async function setEnabledExpenseCategories(
+  vehicleId: string,
+  categories: string[]
+): Promise<void> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ enabled_expense_categories: categories })
+    .eq('id', vehicleId);
+  if (error) throw error;
 }
