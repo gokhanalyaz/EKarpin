@@ -10,7 +10,7 @@ import { getAnyOpenShift } from '@/lib/shifts';
 import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [openByMe, setOpenByMe] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -45,16 +45,9 @@ export function DriverHome() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="subtitle">Araçlarım</ThemedText>
-        <Pressable onPress={signOut}>
-          <ThemedText type="linkPrimary">Çıkış</ThemedText>
-        </Pressable>
-      </ThemedView>
-
-      <Pressable style={styles.historyLink} onPress={() => router.push('/history')}>
-        <ThemedText type="linkPrimary">📋 Karpinlerimi Filtrele</ThemedText>
-      </Pressable>
+      <ThemedText type="subtitle" style={styles.header}>
+        Araçlarım
+      </ThemedText>
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
@@ -96,13 +89,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  historyLink: { marginBottom: Spacing.three },
+  header: { marginBottom: Spacing.three },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, paddingBottom: Spacing.four, flexGrow: 1 },
   empty: { textAlign: 'center', marginTop: Spacing.five },

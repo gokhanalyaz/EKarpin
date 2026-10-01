@@ -13,7 +13,7 @@ import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 type StatusInfo = { open: boolean; driverName?: string };
 
 export function OwnerHome() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [status, setStatus] = useState<Record<string, StatusInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -52,16 +52,9 @@ export function OwnerHome() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="subtitle">Araçlarım</ThemedText>
-        <Pressable onPress={signOut}>
-          <ThemedText type="linkPrimary">Çıkış</ThemedText>
-        </Pressable>
-      </ThemedView>
-
-      <Pressable style={styles.historyLink} onPress={() => router.push('/history')}>
-        <ThemedText type="linkPrimary">📋 Tüm Karpinleri Filtrele</ThemedText>
-      </Pressable>
+      <ThemedText type="subtitle" style={styles.header}>
+        Araçlarım
+      </ThemedText>
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
@@ -114,13 +107,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  historyLink: { marginBottom: Spacing.three },
+  header: { marginBottom: Spacing.three },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, paddingBottom: Spacing.four, flexGrow: 1 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
