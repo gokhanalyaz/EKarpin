@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'rea
 import { ShiftHistoryCard, type SettlementInfo } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { queryShifts, type Shift } from '@/lib/shifts';
 import {
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  chipTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  chipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, marginTop: Spacing.two },
   kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
@@ -358,6 +358,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.three,
   },
-  batchButtonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  batchButtonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
   buttonPressed: { opacity: 0.7 },
 });

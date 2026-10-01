@@ -4,7 +4,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { createVehicle, type PaymentModel } from '@/lib/vehicles';
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   roleButtonActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  roleTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   button: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
@@ -151,5 +151,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });

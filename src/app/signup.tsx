@@ -14,7 +14,7 @@ import { PasswordInput } from '@/components/password-input';
 import { PhoneInput } from '@/components/phone-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import type { UserRole } from '@/contexts/auth-context';
 import { normalizePhone } from '@/lib/format';
 import { consumeKvkkAccepted } from '@/lib/kvkk-consent';
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primary,
     borderColor: Brand.primary,
   },
-  roleTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   hint: { marginTop: -Spacing.two },
   input: {
     borderWidth: 1,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.primary,
     borderColor: Brand.primary,
   },
-  checkboxMark: { color: Brand.onPrimary, fontSize: 14, fontWeight: '700' },
+  checkboxMark: { color: Brand.onPrimary, fontSize: 14, fontFamily: FontFamily.bodyBold },
   kvkkText: { flex: 1 },
   kvkkLink: { textDecorationLine: 'underline' },
   button: {
@@ -250,6 +250,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
   link: { alignSelf: 'center', marginTop: Spacing.two },
 });

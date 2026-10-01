@@ -4,7 +4,7 @@ import { Alert, Image, Pressable, StyleSheet, TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { closeShift, formatDuration, getShiftDurationMinutes, getUsedKmDiscountToday, type Shift } from '@/lib/shifts';
@@ -581,21 +581,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   driverChipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  driverChipTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  driverChipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   driverShareBox: {
     alignItems: 'center',
     gap: Spacing.half,
     marginTop: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  driverShareAmount: { fontSize: 28, lineHeight: 36, fontWeight: '800', color: '#F59E0B' },
+  driverShareAmount: { fontSize: 28, lineHeight: 36, fontFamily: FontFamily.displayBlack, color: '#F59E0B' },
   finalBox: {
     alignItems: 'center',
     gap: Spacing.half,
     marginTop: Spacing.five,
     paddingVertical: Spacing.four,
   },
-  finalAmount: { fontSize: 40, lineHeight: 50, fontWeight: '800', color: '#16A34A' },
+  finalAmount: { fontSize: 40, lineHeight: 50, fontFamily: FontFamily.displayBlack, color: '#16A34A' },
   cashLabel: { color: '#16A34A', marginTop: Spacing.half },
   button: {
     backgroundColor: Brand.primary,
@@ -605,5 +605,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });

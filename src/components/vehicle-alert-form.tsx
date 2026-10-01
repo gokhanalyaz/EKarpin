@@ -4,7 +4,7 @@ import { Alert, Image, Pressable, StyleSheet, TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { getOwnerPushToken, sendPushNotification } from '@/lib/notifications';
@@ -147,5 +147,5 @@ const styles = StyleSheet.create({
   },
   cancelButton: { alignItems: 'center', paddingVertical: Spacing.one },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: '#fff', fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });

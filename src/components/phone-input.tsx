@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
@@ -39,6 +39,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
   },
-  prefix: { fontSize: 16, fontWeight: '700', marginRight: Spacing.one },
+  prefix: { fontSize: 16, fontFamily: FontFamily.bodyBold, marginRight: Spacing.one },
   input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
 });

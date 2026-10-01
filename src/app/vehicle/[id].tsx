@@ -17,7 +17,7 @@ import { ShiftHistoryList } from '@/components/shift-history-list';
 import { VehicleAlertList } from '@/components/vehicle-alert-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import {
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   expenseChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two, marginBottom: Spacing.two },
   expenseChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999, borderWidth: 1 },
   expenseChipOn: { backgroundColor: '#2563EB1F', borderColor: '#2563EB' },
-  expenseChipTextOn: { color: '#1D4ED8', fontWeight: '700' },
+  expenseChipTextOn: { color: '#1D4ED8', fontFamily: FontFamily.bodyBold },
   hint: { marginBottom: Spacing.one },
   button: {
     backgroundColor: Brand.primary,
@@ -378,5 +378,5 @@ const styles = StyleSheet.create({
   linkButton: { alignItems: 'center', marginTop: Spacing.three },
   addDriverButton: { alignItems: 'center', marginTop: Spacing.four, paddingVertical: Spacing.two },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });

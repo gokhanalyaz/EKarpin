@@ -37,6 +37,20 @@ export const Brand = {
   onPrimary: '#171717',
 } as const;
 
+/**
+ * Ozel yazi tipi aileleri (Google Fonts: Archivo + Inter, _layout.tsx'te
+ * useFonts ile yukleniyor). Basliklarda Archivo (kalin/iddiali), govde
+ * metninde Inter (ince/okunakli) kullaniliyor - Netflix/Zara karisimi his.
+ */
+export const FontFamily = {
+  displayBlack: 'Archivo_900Black',
+  displayBold: 'Archivo_800ExtraBold',
+  body: 'Inter_400Regular',
+  bodyMedium: 'Inter_500Medium',
+  bodySemiBold: 'Inter_600SemiBold',
+  bodyBold: 'Inter_700Bold',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

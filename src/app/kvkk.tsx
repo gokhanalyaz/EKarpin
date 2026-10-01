@@ -4,7 +4,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSh
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { setKvkkAccepted } from '@/lib/kvkk-consent';
 
 const SCROLL_END_THRESHOLD = 24;
@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   approveButtonDisabled: { opacity: 0.4 },
-  approveButtonText: { color: Brand.onPrimary, fontWeight: '700' },
+  approveButtonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   buttonPressed: { opacity: 0.7 },
 });

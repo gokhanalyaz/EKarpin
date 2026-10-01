@@ -1,4 +1,7 @@
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { Archivo_800ExtraBold, Archivo_900Black } from '@expo-google-fonts/archivo';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -17,10 +20,23 @@ function handleNotificationData(data: Record<string, unknown> | undefined) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  // Ozel yazi tipleri (basliklar icin Archivo, govde metni icin Inter)
+  // yuklenene kadar acilis ekranini acik tutuyoruz; aksi halde once
+  // sistem fontuyla bir an goruntulenip sonra degisirdi (goz tirmalayici).
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Archivo_800ExtraBold,
+    Archivo_900Black,
+  });
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
 
   useEffect(() => {
     // Uygulama kapaliyken bir bildirime dokunularak acildiysa (cold start),
@@ -35,6 +51,10 @@ export default function RootLayout() {
 
     return () => subscription.remove();
   }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
