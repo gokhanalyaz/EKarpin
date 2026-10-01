@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
-import { getShift, type Shift } from '@/lib/shifts';
+import { getShift, isShiftVisibleToDriver, type Shift } from '@/lib/shifts';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { getVehicle, type Vehicle } from '@/lib/vehicles';
@@ -36,11 +36,21 @@ export default function ShiftDetailScreen() {
         setNotFound(true);
         return;
       }
-      setShift(s);
       const v = await getVehicle(s.vehicle_id);
-      setVehicle(v);
       const drivers = await listVehicleDrivers(s.vehicle_id).catch(() => []);
       const found = drivers.find((d) => d.driver_id === s.driver_id);
+
+      // Arac sahibi bu sofor icin bir "gorunme suresi" tanimladiysa ve
+      // bu karpin o sureyi gectiyse, sofor eski linkten acmaya calissa bile
+      // artik gormemeli (veri silinmedi, sadece gizli) - arac sahibi
+      // tarafinda bu sinir hicbir zaman uygulanmaz.
+      if (!isOwner && !isShiftVisibleToDriver(s, found?.shift_visibility_days)) {
+        setNotFound(true);
+        return;
+      }
+
+      setShift(s);
+      setVehicle(v);
       setDriverName(found?.driver?.full_name ?? 'Şoför');
     } catch (e) {
       console.warn('Vardiya detayı yüklenemedi', e);

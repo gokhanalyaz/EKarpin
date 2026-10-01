@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { PRESET_LABELS, presetToRange, type DatePreset } from '@/lib/date-presets';
-import { queryShifts, type Shift } from '@/lib/shifts';
+import { isShiftVisibleToDriver, queryShifts, type Shift } from '@/lib/shifts';
 import {
   getSettlementLabel,
   getSettlementState,
@@ -16,7 +16,7 @@ import {
   markReceivedAndNotify,
   settlementAmount,
 } from '@/lib/settlement';
-import { listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
+import { listMyVehicleAssignments, listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
 import { listAssignedVehicles, listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 export default function HistoryScreen() {
@@ -33,6 +33,9 @@ export default function HistoryScreen() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  // Sofor tarafinda: arac basina "kendi karpinlerim kac gun gorunur"
+  // siniri - arac sahibi tarafinda bu hic doldurulmaz/uygulanmaz.
+  const [myVisibilityByVehicle, setMyVisibilityByVehicle] = useState<Record<string, number | null>>({});
 
   type SettlementFilter = 'all' | 'pending' | 'done';
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
@@ -62,6 +65,19 @@ export default function HistoryScreen() {
       })
       .catch(() => {});
   }, [isOwner, selectedVehicleId, vehicles]);
+
+  useEffect(() => {
+    if (isOwner || !profile) return;
+    listMyVehicleAssignments(profile.id)
+      .then((rows) => {
+        const map: Record<string, number | null> = {};
+        rows.forEach((row) => {
+          map[row.vehicle_id] = row.shift_visibility_days;
+        });
+        setMyVisibilityByVehicle(map);
+      })
+      .catch(() => {});
+  }, [isOwner, profile]);
 
   const driverNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -139,11 +155,15 @@ export default function HistoryScreen() {
   }, [shifts]);
 
   const visibleShifts = useMemo(() => {
-    if (settlementFilter === 'all') return shifts;
-    return shifts.filter((s) =>
-      settlementFilter === 'done' ? getSettlementState(s) === 'confirmed' : getSettlementState(s) !== 'confirmed'
-    );
-  }, [shifts, settlementFilter]);
+    return shifts.filter((s) => {
+      // Sofor tarafinda: arac sahibinin bu arac icin tanimladigi "gorunme
+      // suresi" gecen karpinler artik gozukmez (veri silinmiyor, sadece
+      // gizleniyor). Arac sahibi ekraninda bu hic uygulanmaz.
+      if (!isOwner && !isShiftVisibleToDriver(s, myVisibilityByVehicle[s.vehicle_id])) return false;
+      if (settlementFilter === 'all') return true;
+      return settlementFilter === 'done' ? getSettlementState(s) === 'confirmed' : getSettlementState(s) !== 'confirmed';
+    });
+  }, [shifts, settlementFilter, isOwner, myVisibilityByVehicle]);
 
   async function handleConfirmOne(shift: Shift) {
     try {

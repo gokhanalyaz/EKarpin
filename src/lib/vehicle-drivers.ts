@@ -9,12 +9,19 @@ export type VehicleDriverRow = {
   created_at: string;
   driver: Profile;
   daily_km_discount_limit: number | null;
+  /** Null = sinirsiz. Doluysa, bu soforun kapanmis karpinleri KENDI
+   * panelinde (Gecmis sekmesi, arac/sofor ekranlari) sadece bu kadar gun
+   * boyunca gorunur - veri silinmez, sadece soforun gorunumunden kaybolur.
+   * Arac sahibi tarafinda bu sinir hicbir zaman uygulanmaz. */
+  shift_visibility_days: number | null;
 };
 
 export async function listVehicleDrivers(vehicleId: string): Promise<VehicleDriverRow[]> {
   const { data, error } = await supabase
     .from('vehicle_drivers')
-    .select('id, vehicle_id, driver_id, created_at, daily_km_discount_limit, driver:profiles(*)')
+    .select(
+      'id, vehicle_id, driver_id, created_at, daily_km_discount_limit, shift_visibility_days, driver:profiles(*)'
+    )
     .eq('vehicle_id', vehicleId)
     .order('created_at', { ascending: true });
 
@@ -42,6 +49,40 @@ export async function setDriverDailyKmLimit(vehicleDriverRowId: string, limit: n
     .update({ daily_km_discount_limit: limit && limit > 0 ? limit : null })
     .eq('id', vehicleDriverRowId);
   if (error) throw error;
+}
+
+/**
+ * Araç sahibi, bu şoförün kapanmış karpinlerinin kendi panelinde kaç gün
+ * görünür kalacağını belirler/günceller (null/0 = sınırsız - şoför hep
+ * görür). Bu sadece şoförün görünümünü kısıtlar, veri hiçbir zaman
+ * silinmez; araç sahibi tarafında bu sınır hiçbir zaman uygulanmaz.
+ */
+export async function setDriverShiftVisibilityDays(
+  vehicleDriverRowId: string,
+  days: number | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('vehicle_drivers')
+    .update({ shift_visibility_days: days && days > 0 ? Math.round(days) : null })
+    .eq('id', vehicleDriverRowId);
+  if (error) throw error;
+}
+
+/**
+ * Bir soforun KENDISININ atandigi tum araclardaki vehicle_drivers
+ * satirlarini (ozellikle her arac icin tanimlanmis shift_visibility_days
+ * degerini) getirir - sofor tarafindaki ekranlarda "bu araçta karpinlerim
+ * kac gun gorunur" bilgisini aractan araca uygulamak icin kullanilir.
+ */
+export async function listMyVehicleAssignments(
+  driverId: string
+): Promise<Pick<VehicleDriverRow, 'vehicle_id' | 'shift_visibility_days'>[]> {
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('vehicle_id, shift_visibility_days')
+    .eq('driver_id', driverId);
+  if (error) throw error;
+  return (data ?? []) as unknown as Pick<VehicleDriverRow, 'vehicle_id' | 'shift_visibility_days'>[];
 }
 
 export async function findDriverByPhone(phone: string): Promise<Profile | null> {

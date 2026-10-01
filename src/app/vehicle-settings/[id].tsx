@@ -25,6 +25,7 @@ import {
   findDriverByPhone,
   listVehicleDrivers,
   setDriverDailyKmLimit,
+  setDriverShiftVisibilityDays,
   unassignDriver,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
@@ -60,6 +61,9 @@ export default function VehicleSettingsScreen() {
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
 
+  const [visibilityInputs, setVisibilityInputs] = useState<Record<string, string>>({});
+  const [savingVisibilityFor, setSavingVisibilityFor] = useState<string | null>(null);
+
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [showAddDriver, setShowAddDriver] = useState(false);
@@ -83,6 +87,11 @@ export default function VehicleSettingsScreen() {
       setLimitInputs(
         Object.fromEntries(
           d.map((row) => [row.id, row.daily_km_discount_limit != null ? String(row.daily_km_discount_limit) : ''])
+        )
+      );
+      setVisibilityInputs(
+        Object.fromEntries(
+          d.map((row) => [row.id, row.shift_visibility_days != null ? String(row.shift_visibility_days) : ''])
         )
       );
     } catch (e) {
@@ -190,6 +199,27 @@ export default function VehicleSettingsScreen() {
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
     } finally {
       setSavingLimitFor(null);
+    }
+  }
+
+  async function handleSaveVisibility(row: VehicleDriverRow) {
+    const raw = visibilityInputs[row.id] ?? '';
+    const parsed = raw.trim() ? Number(raw.replace(',', '.')) : null;
+    if (raw.trim() && (Number.isNaN(parsed) || (parsed as number) <= 0)) {
+      Alert.alert(
+        'Geçersiz değer',
+        'Geçerli bir gün sayısı gir (boş bırakırsan şoför karpinlerini süresiz görür).'
+      );
+      return;
+    }
+    setSavingVisibilityFor(row.id);
+    try {
+      await setDriverShiftVisibilityDays(row.id, parsed);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setSavingVisibilityFor(null);
     }
   }
 
@@ -452,6 +482,31 @@ export default function VehicleSettingsScreen() {
                   </Pressable>
                 </ThemedView>
               )}
+              <ThemedText type="small" themeColor="textSecondary" style={styles.visibilityHint}>
+                Bu şoför kendi panelinde karpinlerini kaç gün görsün? (Boş = sınırsız. Bu süre
+                dolunca karpin sadece şoförün görünümünden kaybolur, senin tarafında hep kalır.)
+              </ThemedText>
+              <ThemedView style={styles.inlineRow}>
+                <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+                  Şoför Panelinde Görünme Süresi (gün)
+                </ThemedText>
+                <TextInput
+                  style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
+                  placeholder="Sınırsız"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="number-pad"
+                  value={visibilityInputs[item.id] ?? ''}
+                  onChangeText={(v) => setVisibilityInputs((prev) => ({ ...prev, [item.id]: v }))}
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.smallSaveButton, pressed && styles.pressed]}
+                  onPress={() => handleSaveVisibility(item)}
+                  disabled={savingVisibilityFor === item.id}>
+                  <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+                    {savingVisibilityFor === item.id ? '...' : 'Kaydet'}
+                  </ThemedText>
+                </Pressable>
+              </ThemedView>
             </ThemedView>
           ))}
         </ThemedView>
@@ -532,6 +587,7 @@ const styles = StyleSheet.create({
   driverCard: { padding: Spacing.three, gap: Spacing.half },
   driverCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
   removeText: { color: '#DC2626' },
+  visibilityHint: { marginTop: Spacing.two },
   hint: { marginTop: Spacing.two, marginBottom: Spacing.one },
   button: {
     backgroundColor: Brand.primary,

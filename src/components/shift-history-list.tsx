@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet } from 'react-native';
 
 import { PhotoViewButton } from '@/components/photo-view-button';
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +9,13 @@ import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { PRESET_LABELS, presetToRange, type DatePreset } from '@/lib/date-presets';
-import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
+import {
+  formatDuration,
+  getShiftDurationMinutes,
+  isShiftVisibleToDriver,
+  listVehicleShifts,
+  type Shift,
+} from '@/lib/shifts';
 import { expenseCategoryLabel } from '@/lib/expense-categories';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
@@ -96,6 +102,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
   const masrafValue = s.other_expenses_note
     ? `${formatTL(s.other_expenses)} (${s.other_expenses_note})`
     : formatTL(s.other_expenses);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   const settlementCardStyle =
     settlement?.state === 'pending'
@@ -136,14 +143,16 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
 
   function handleSettlementPress() {
     if (!settlement?.onConfirm) return;
-    Alert.alert(
-      settlement.confirmTitle ?? 'Emin misiniz?',
-      settlement.confirmMessage,
-      [
-        { text: 'Vazgeç', style: 'cancel' },
-        { text: settlement.confirmButtonLabel ?? 'Evet', onPress: settlement.onConfirm },
-      ]
-    );
+    setConfirmVisible(true);
+  }
+
+  function handleConfirmYes() {
+    setConfirmVisible(false);
+    settlement?.onConfirm?.();
+  }
+
+  function handleConfirmNo() {
+    setConfirmVisible(false);
   }
 
   const content = (
@@ -237,12 +246,49 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
     </ThemedView>
   );
 
-  if (!pressable) return content;
+  const cardElement = !pressable ? (
+    content
+  ) : (
+    <Pressable onPress={() => router.push(`/shift-detail/${s.id}`)}>{content}</Pressable>
+  );
 
   return (
-    <Pressable onPress={() => router.push(`/shift-detail/${s.id}`)}>
-      {content}
-    </Pressable>
+    <>
+      {cardElement}
+      {settlement?.onConfirm && (
+        <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={handleConfirmNo}>
+          <Pressable style={styles.confirmBackdrop} onPress={handleConfirmNo}>
+            <Pressable onPress={() => {}}>
+              <ThemedView type="backgroundElement" style={styles.confirmCard}>
+                <ThemedText type="subtitle" style={styles.confirmTitle}>
+                  {settlement.confirmTitle ?? 'Emin misiniz?'}
+                </ThemedText>
+                <ThemedText type="title" style={styles.confirmAmount}>
+                  {formatTL(settlementAmount(s))}
+                </ThemedText>
+                <ThemedText type="default" style={styles.confirmMessage}>
+                  {settlement.confirmMessage}
+                </ThemedText>
+                <ThemedView style={[styles.confirmButtonRow, styles.transparentBg]}>
+                  <Pressable
+                    style={({ pressed }) => [styles.confirmCancelButton, pressed && styles.buttonPressed]}
+                    onPress={handleConfirmNo}>
+                    <ThemedText type="smallBold">Vazgeç</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.confirmYesButton, pressed && styles.buttonPressed]}
+                    onPress={handleConfirmYes}>
+                    <ThemedText style={styles.confirmYesText}>
+                      {settlement.confirmButtonLabel ?? 'Evet'}
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
+              </ThemedView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -251,6 +297,7 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
   const isOwner = profile?.role === 'owner';
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [driverNames, setDriverNames] = useState<Record<string, string>>({});
+  const [driverVisibilityDays, setDriverVisibilityDays] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<DatePreset>('all');
   const [settlementFilter, setSettlementFilter] = useState<'all' | 'pending' | 'done'>('all');
@@ -260,10 +307,13 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
       ([shiftRows, driverRows]) => {
         setShifts(shiftRows.filter((s) => s.status === 'closed'));
         const map: Record<string, string> = {};
+        const visibilityMap: Record<string, number | null> = {};
         driverRows.forEach((row) => {
           map[row.driver_id] = row.driver?.full_name ?? 'İsimsiz';
+          visibilityMap[row.driver_id] = row.shift_visibility_days;
         });
         setDriverNames(map);
+        setDriverVisibilityDays(visibilityMap);
       }
     );
   };
@@ -294,11 +344,16 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
     return shifts.filter((s) => {
       if (from && s.opened_at < from) return false;
       if (to && s.opened_at > to) return false;
+      // Arac sahibi bu soforun karpinlerine bir "gorunme suresi" koyduysa,
+      // suresi gecen karpinler soforun kendi panelinde artik gozukmez -
+      // veri silinmiyor, sadece gizleniyor. Bu sinir SADECE sofor
+      // tarafinda uygulanir; arac sahibi her zaman tum gecmisi gorur.
+      if (!isOwner && !isShiftVisibleToDriver(s, driverVisibilityDays[s.driver_id])) return false;
       if (settlementFilter === 'all') return true;
       const state = getSettlementState(s);
       return settlementFilter === 'done' ? state === 'confirmed' : state !== 'confirmed';
     });
-  }, [shifts, preset, settlementFilter]);
+  }, [shifts, preset, settlementFilter, isOwner, driverVisibilityDays]);
 
   const settlementTotals = useMemo(() => {
     let pendingTotal = 0;
@@ -438,6 +493,41 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 
 const styles = StyleSheet.create({
   list: { gap: Spacing.two, backgroundColor: 'transparent' },
+  confirmBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  confirmCard: {
+    width: 300,
+    maxWidth: '100%',
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    gap: Spacing.one,
+    alignItems: 'center',
+  },
+  confirmTitle: { textAlign: 'center' },
+  confirmAmount: { textAlign: 'center', marginVertical: Spacing.one },
+  confirmMessage: { textAlign: 'center', marginBottom: Spacing.two },
+  confirmButtonRow: { flexDirection: 'row', gap: Spacing.two, width: '100%' },
+  confirmCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#94A3B8',
+  },
+  confirmYesButton: {
+    flex: 1,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    backgroundColor: Brand.primary,
+  },
+  confirmYesText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   filterChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   filterChip: {
     borderWidth: 1,

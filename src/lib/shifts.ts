@@ -512,3 +512,22 @@ export function formatDuration(minutes: number): string {
   if (m === 0) return `${h} sa`;
   return `${h} sa ${m} dk`;
 }
+
+/**
+ * Araç sahibi bir şoför için "görünme süresi" (gün) tanımlamışsa, kapanalı
+ * o kadar günü geçen karpinler artık o şoförün KENDİ panelinde görünmez -
+ * veri hiçbir zaman silinmez, sadece gizlenir. Bu fonksiyon yalnızca
+ * şoför tarafı ekranlarında kullanılmalı; araç sahibi ekranları bu
+ * sınırı hiçbir zaman uygulamaz, tüm geçmişi her zaman gösterir.
+ */
+export function isShiftVisibleToDriver(
+  shift: Pick<Shift, 'closed_at' | 'opened_at'>,
+  visibilityDays: number | null | undefined
+): boolean {
+  if (!visibilityDays || visibilityDays <= 0) return true;
+  const reference = shift.closed_at ?? shift.opened_at;
+  if (!reference) return true;
+  const ageMs = Date.now() - new Date(reference).getTime();
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  return ageDays <= visibilityDays;
+}
