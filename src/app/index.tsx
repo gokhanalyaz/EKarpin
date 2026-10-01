@@ -1,20 +1,38 @@
 import { Redirect } from 'expo-router';
-import { useMemo } from 'react';
+import * as Notifications from 'expo-notifications';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
-import { consumePendingNotificationTarget } from '@/lib/pending-notification';
+import { resolveNotificationRoute } from '@/lib/notification-routing';
 
 export default function Index() {
   const { session, profile, loading } = useAuth();
-  // Uygulama bir bildirime dokunularak soguk baslangicla acildiysa, /home
-  // yerine dogrudan o bildirimin hedefine gidilecek. Sadece bir kere (ilk
-  // render'da) okunup tuketilir ki sonraki render'larda kaybolmasin/tekrar
-  // tuketilmeye calisilmasin.
-  const notificationTarget = useMemo(() => consumePendingNotificationTarget(), []);
+  const [notifChecked, setNotifChecked] = useState(false);
+  const [notifTarget, setNotifTarget] = useState<string | null>(null);
 
-  if (loading || (session && !profile)) {
+  useEffect(() => {
+    // Uygulama tamamen kapaliyken bir bildirime dokunularak acildiysa, hangi
+    // ekrana gidilecegini ONCEDEN bilmemiz lazim - yoksa asagida /home'a
+    // yonlendirip, bu kontrol gec gelince de onun ustune yazmis oluruz
+    // (bu yuzden asil yonlendirme karari bu kontrol bitene kadar bekliyor).
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        const target = resolveNotificationRoute(
+          response?.notification.request.content.data as Record<string, unknown> | undefined
+        );
+        setNotifTarget(target);
+        // Ayni "son bildirim" bir dahaki acilista tekrar kullanilmasin diye temizle.
+        if (response) {
+          Notifications.clearLastNotificationResponseAsync().catch(() => {});
+        }
+      })
+      .catch(() => setNotifTarget(null))
+      .finally(() => setNotifChecked(true));
+  }, []);
+
+  if (loading || (session && !profile) || !notifChecked) {
     return (
       <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
@@ -26,5 +44,5 @@ export default function Index() {
     return <Redirect href="/login" />;
   }
 
-  return <Redirect href={(notificationTarget ?? '/home') as any} />;
+  return <Redirect href={(notifTarget ?? '/home') as any} />;
 }

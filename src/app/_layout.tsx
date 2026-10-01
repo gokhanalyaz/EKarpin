@@ -6,7 +6,6 @@ import { useColorScheme } from 'react-native';
 
 import { AuthProvider } from '@/contexts/auth-context';
 import { resolveNotificationRoute } from '@/lib/notification-routing';
-import { setPendingNotificationTarget } from '@/lib/pending-notification';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,21 +23,12 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    // Uygulama kapaliyken bir bildirime dokunularak acildiysa (cold start):
-    // henuz oturum/navigasyon hazir olmadigi icin hemen router.push YAPMIYORUZ
-    // (index.tsx'in /home yonlendirmesiyle yarisip kaybediyordu). Hedefi
-    // bekletiyoruz, index.tsx oturumu dogrulayinca bunu okuyup oraya gidiyor.
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
-        const target = resolveNotificationRoute(
-          response.notification.request.content.data as Record<string, unknown>
-        );
-        if (target) setPendingNotificationTarget(target);
-      }
-    });
-
-    // Uygulama acikken/arka plandayken bir bildirime dokunulursa (navigasyon
-    // zaten hazir, dogrudan yonlendirebiliriz).
+    // Uygulama kapaliyken bir bildirime dokunularak acildiysa (cold start),
+    // o kontrol index.tsx tarafinda, oturum/yonlendirme kararina DAHIL
+    // edilerek yapiliyor (burada yapilsa, henuz navigasyon hazir olmadan
+    // push etmis olurduk ve index.tsx'in /home yonlendirmesi bunun ustune
+    // yazardi). Burada sadece uygulama ZATEN acikken/arka plandayken
+    // dokunulan bildirimleri dinliyoruz; o durumda navigasyon zaten hazir.
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       handleNotificationData(response.notification.request.content.data as Record<string, unknown>);
     });
