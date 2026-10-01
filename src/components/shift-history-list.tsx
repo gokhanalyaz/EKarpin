@@ -29,9 +29,22 @@ function formatTL(value: number | null | undefined): string {
   return `${(value ?? 0).toFixed(2)} ₺`;
 }
 
-function DetailRow({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  emphasize,
+  last,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+  /** Son satirda alt cizgi cekilmez - tablonun kapanisi temiz dursun diye. */
+  last?: boolean;
+}) {
+  const theme = useTheme();
   return (
-    <ThemedView style={styles.detailRow}>
+    <ThemedView
+      style={[styles.detailRow, !last && { borderBottomColor: theme.backgroundSelected, borderBottomWidth: StyleSheet.hairlineWidth }]}>
       <ThemedText type="small" themeColor="textSecondary" style={styles.detailLabel}>
         {label}
       </ThemedText>
@@ -40,12 +53,6 @@ function DetailRow({ label, value, emphasize }: { label: string; value: string; 
       </ThemedText>
     </ThemedView>
   );
-}
-
-/** Kalem gruplari arasina ince bir ayirici cizgi - karisik gorunmesin diye. */
-function Divider() {
-  const theme = useTheme();
-  return <ThemedView style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />;
 }
 
 export type SettlementInfo = {
@@ -127,7 +134,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
   const content = (
     <ThemedView type="backgroundElement" style={[styles.card, settlementCardStyle]}>
       {settlement && (
-        <ThemedView style={styles.settlementRow}>
+        <ThemedView style={[styles.settlementRow, styles.transparentBg]}>
           {settlement.onConfirm ? (
             <Pressable onPress={handleSettlementPress} hitSlop={8}>
               <ThemedText type="small" style={[styles.settlementBadge, settlementBadgeStyle]}>
@@ -151,13 +158,12 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
         {minutes != null ? ` · ${formatDuration(minutes)}` : ''}
       </ThemedText>
 
-      <ThemedView style={styles.details}>
+      <ThemedView style={[styles.details, styles.transparentBg]}>
         <DetailRow label="Açılış Km" value={s.opening_km != null ? String(s.opening_km) : '-'} />
         <DetailRow label="Kapanış Km" value={s.closing_km != null ? String(s.closing_km) : '-'} />
 
         {isPercentage ? (
           <>
-            <Divider />
             <DetailRow label="Hasılat (Tutar)" value={formatTL(s.total_amount)} />
             {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
             <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} />
@@ -178,16 +184,14 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
             {s.other_expenses_note ? (
               <DetailRow label="Masraf Notu" value={s.other_expenses_note} />
             ) : null}
-            <Divider />
             <DetailRow label="Ondalık (Şoför Payı)" value={formatTL(s.driver_share)} />
-            <DetailRow label="Net Kalan" value={formatTL(s.owner_total)} emphasize />
-            {hasCard && <DetailRow label="Nakit Tutar" value={formatTL(s.net_cash)} emphasize />}
+            <DetailRow label="Net Kalan" value={formatTL(s.owner_total)} emphasize last={!hasCard} />
+            {hasCard && <DetailRow label="Nakit Tutar" value={formatTL(s.net_cash)} emphasize last />}
           </>
         ) : (
           <>
-            <Divider />
             <DetailRow label="Toplam Km" value={s.km_total != null ? String(s.km_total) : '-'} />
-            <DetailRow label="Km Borcu" value={formatTL(s.km_debt)} emphasize />
+            <DetailRow label="Km Borcu" value={formatTL(s.km_debt)} emphasize last />
           </>
         )}
       </ThemedView>
@@ -364,9 +368,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: Spacing.half,
   },
   detailLabel: { flexShrink: 1 },
   detailValue: { flexShrink: 0, textAlign: 'right' },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.half },
+  // ThemedView tipsiz kullanilinca varsayilan olarak opak "background"
+  // (beyaz) rengini basinca kartin krem rengiyle uyusmuyordu - bu satirlarla
+  // iceride kalan kutular tamamen seffaf kalip kartin rengini gosteriyor.
+  transparentBg: { backgroundColor: 'transparent' },
   note: { marginTop: Spacing.half },
 });

@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 
+import { ShiftHistoryList } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -63,11 +64,10 @@ export default function VehicleDetailScreen() {
           : `Km sistemi (${vehicle.km_rate ?? '-'} TL/km)`}
       </ThemedText>
 
-      <Pressable
-        style={({ pressed }) => [styles.historyLink, pressed && styles.buttonPressed]}
-        onPress={() => router.push(`/history?vehicleId=${vehicle.id}`)}>
-        <ThemedText type="eyebrow">Vardiya Geçmişi ›</ThemedText>
-      </Pressable>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
+        Vardiya Geçmişi
+      </ThemedText>
+      <ShiftHistoryList vehicle={vehicle} />
     </ScrollView>
   );
 }
@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { flex: 1 },
-  historyLink: { marginTop: Spacing.six },
+  sectionTitle: { marginTop: Spacing.six },
   buttonPressed: { opacity: 0.7 },
 });

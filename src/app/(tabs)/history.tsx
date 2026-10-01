@@ -346,7 +346,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
+  // borderWidth:0 ile ayni renkli border+fill kombosunun yuvarlak
+  // kosede biraktigi minik beyaz antialiasing cizgisini onluyoruz.
+  chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
   chipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, marginTop: Spacing.two },
