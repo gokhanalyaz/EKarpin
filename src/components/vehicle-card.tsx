@@ -15,6 +15,8 @@ type Props = {
   statusActive?: boolean;
   /** Durum basliginin ALTINDA ayri bir satirda gosterilir - soför adi ya da bir ipucu metni (orn. "Kapatmak için dokun"). */
   subLabel?: string;
+  /** true ise subLabel (soför adi gibi onemli bir bilgi) koyu/siyah ve kalin yazilir; false/yoksa ipucu metni gibi soluk gri kalir. */
+  subLabelBold?: boolean;
   /** Vardiya acikken kartin kosesine kucuk bir not olarak acilis saati yazilir. */
   openedAt?: string | null;
 };
@@ -35,12 +37,12 @@ function formatOpenedTime(iso: string): string {
  * ALTINDA ayri bir satirda, acilis saati ise vardiya acikken kartin sag
  * ust kosesinde kucuk bir not olarak gosterilir.
  */
-export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, openedAt }: Props) {
+export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subLabelBold, openedAt }: Props) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       {statusActive && openedAt ? (
         <ThemedView style={[styles.openedAtBadge, styles.transparentBg]}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.openedAtText}>
+          <ThemedText type="small" style={styles.openedAtText}>
             Açılış {formatOpenedTime(openedAt)}
           </ThemedText>
         </ThemedView>
@@ -54,7 +56,10 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, open
             {statusLabel}
           </ThemedText>
           {subLabel ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.subLabel}>
+            <ThemedText
+              type="small"
+              themeColor={subLabelBold ? undefined : 'textSecondary'}
+              style={[styles.subLabel, subLabelBold && styles.subLabelBold]}>
               {subLabel}
             </ThemedText>
           ) : null}
@@ -94,16 +99,17 @@ const styles = StyleSheet.create({
   },
   statusActiveText: { color: '#16A34A' },
   subLabel: { marginTop: Spacing.half },
+  subLabelBold: { fontFamily: FontFamily.bodyBold },
   openedAtBadge: {
     position: 'absolute',
     top: Spacing.two,
     right: Spacing.three,
   },
-  openedAtText: { fontSize: 11 },
+  openedAtText: { fontSize: 12, fontFamily: FontFamily.bodyBold },
   plateText: {
     fontFamily: FontFamily.bodyBold,
     fontSize: 20,
     letterSpacing: 1,
   },
-  carIcon: { marginRight: -Spacing.one },
+  carIcon: {},
 });

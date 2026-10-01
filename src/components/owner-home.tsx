@@ -78,6 +78,7 @@ export function OwnerHome() {
                   statusActive={s?.open}
                   statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
                   subLabel={s?.open ? s.driverName : undefined}
+                  subLabelBold
                   openedAt={s?.open ? s.openedAt : undefined}
                 />
               </Pressable>
