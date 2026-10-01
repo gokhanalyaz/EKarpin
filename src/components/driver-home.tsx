@@ -7,13 +7,13 @@ import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getAnyOpenShift } from '@/lib/shifts';
+import { getAnyOpenShift, type Shift } from '@/lib/shifts';
 import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
   const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [openByMe, setOpenByMe] = useState<Record<string, boolean>>({});
+  const [openShiftByMe, setOpenShiftByMe] = useState<Record<string, Shift | null>>({});
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
@@ -26,10 +26,10 @@ export function DriverHome() {
       const statuses = await Promise.all(
         data.map(async (v) => {
           const open = await getAnyOpenShift(v.id).catch(() => null);
-          return [v.id, open?.driver_id === profile.id] as const;
+          return [v.id, open?.driver_id === profile.id ? open : null] as const;
         })
       );
-      setOpenByMe(Object.fromEntries(statuses));
+      setOpenShiftByMe(Object.fromEntries(statuses));
     } catch (e) {
       console.warn('Araçlar yüklenemedi', e);
     } finally {
@@ -62,17 +62,20 @@ export function DriverHome() {
               Henüz hiçbir araca atanmadın. Araç sahibinin seni eklemesini bekle.
             </ThemedText>
           }
-          renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
-              <VehicleCard
-                vehicle={item}
-                statusActive={openByMe[item.id]}
-                statusText={
-                  openByMe[item.id] ? 'Vardiyan açık — kapatmak için dokun' : 'Vardiya açmak için dokun'
-                }
-              />
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const open = openShiftByMe[item.id];
+            return (
+              <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
+                <VehicleCard
+                  vehicle={item}
+                  statusActive={!!open}
+                  statusLabel={open ? 'Vardiyan Açık' : 'Vardiya Kapalı'}
+                  subLabel={open ? 'Kapatmak için dokun' : 'Açmak için dokun'}
+                  openedAt={open?.opened_at}
+                />
+              </Pressable>
+            );
+          }}
         />
       )}
     </ThemedView>

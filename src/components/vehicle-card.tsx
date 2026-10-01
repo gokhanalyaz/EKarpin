@@ -9,26 +9,55 @@ import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
   vehicle: Vehicle;
-  /** Vardiya durumu satiri (orn. "Vardiya açık — Ahmet" / "Vardiya kapalı"). */
-  statusText: string;
-  /** true ise durum metni vurgulu (normal metin) renkte, degilse ikincil gri renkte gosterilir. */
+  /** Durum basligi, orn. "Vardiya Açık" / "Vardiya Kapalı" / "Vardiyan Açık". */
+  statusLabel: string;
+  /** true ise durum basligi vurgulu (yesil) renkte gosterilir. */
   statusActive?: boolean;
+  /** Durum basliginin ALTINDA ayri bir satirda gosterilir - soför adi ya da bir ipucu metni (orn. "Kapatmak için dokun"). */
+  subLabel?: string;
+  /** Vardiya acikken kartin kosesine kucuk bir not olarak acilis saati yazilir. */
+  openedAt?: string | null;
 };
+
+function formatOpenedTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
 
 /**
  * Ana ekranlardaki (ev sahibi + sofor) arac karti: plaka gercek bir plaka
  * gibi beyaz rozette, saga yaslanmis buyuk bir arac simgesiyle birlikte
  * gosterilir - "araç görseli" istegi icin SF Symbols'un arac simgesi
- * kullanildi (yeni bir gorsel/asset pipeline'i gerektirmeden).
+ * kullanildi (yeni bir gorsel/asset pipeline'i gerektirmeden). Durum
+ * basligi (acik/kapali) kalin+buyuk harf+aralikli bir "karakterle" govde
+ * metninden ayristirilir; soför adi/ipucu bunun ALTINDA ayri bir satirda,
+ * acilis saati ise vardiya acikken kartin sag ust kosesinde kucuk bir not
+ * olarak gosterilir.
  */
-export function VehicleCard({ vehicle, statusText, statusActive }: Props) {
+export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, openedAt }: Props) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
+      {statusActive && openedAt ? (
+        <ThemedView style={[styles.openedAtBadge, styles.transparentBg]}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.openedAtText}>
+            Açılış {formatOpenedTime(openedAt)}
+          </ThemedText>
+        </ThemedView>
+      ) : null}
       <ThemedView style={[styles.content, styles.transparentBg]}>
         <PaymentModelBadge vehicle={vehicle} />
-        <ThemedText type="small" themeColor={statusActive ? undefined : 'textSecondary'}>
-          {statusText}
-        </ThemedText>
+        <ThemedView style={styles.transparentBg}>
+          <ThemedText
+            themeColor={statusActive ? undefined : 'textSecondary'}
+            style={[styles.statusText, statusActive && styles.statusActiveText]}>
+            {statusLabel}
+          </ThemedText>
+          {subLabel ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.subLabel}>
+              {subLabel}
+            </ThemedText>
+          ) : null}
+        </ThemedView>
         <ThemedView style={styles.plate}>
           <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
         </ThemedView>
@@ -55,6 +84,20 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, gap: Spacing.two, alignItems: 'flex-start' },
   transparentBg: { backgroundColor: 'transparent' },
+  statusText: {
+    fontFamily: FontFamily.bodyBold,
+    fontSize: 13,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  statusActiveText: { color: '#16A34A' },
+  subLabel: { marginTop: Spacing.half },
+  openedAtBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.three,
+  },
+  openedAtText: { fontSize: 11 },
   plate: {
     backgroundColor: '#FFFFFF',
     borderRadius: Spacing.one,

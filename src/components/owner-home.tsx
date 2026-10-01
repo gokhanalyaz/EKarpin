@@ -11,7 +11,7 @@ import { getAnyOpenShift, type Shift } from '@/lib/shifts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
-type StatusInfo = { open: boolean; driverName?: string };
+type StatusInfo = { open: boolean; driverName?: string; openedAt?: string };
 
 export function OwnerHome() {
   const { profile } = useAuth();
@@ -33,7 +33,7 @@ export function OwnerHome() {
           if (!open) return [v.id, { open: false }] as const;
           const drivers = await listVehicleDrivers(v.id).catch(() => []);
           const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
-          return [v.id, { open: true, driverName: driverName ?? undefined }] as const;
+          return [v.id, { open: true, driverName: driverName ?? undefined, openedAt: open.opened_at }] as const;
         })
       );
       setStatus(Object.fromEntries(entries));
@@ -76,9 +76,9 @@ export function OwnerHome() {
                 <VehicleCard
                   vehicle={item}
                   statusActive={s?.open}
-                  statusText={
-                    s?.open ? `Vardiya açık${s.driverName ? ` — ${s.driverName}` : ''}` : 'Vardiya kapalı'
-                  }
+                  statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
+                  subLabel={s?.open ? s.driverName : undefined}
+                  openedAt={s?.open ? s.openedAt : undefined}
                 />
               </Pressable>
             );
