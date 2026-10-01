@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 
+import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ShiftHistoryList } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -47,7 +48,7 @@ export default function VehicleDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <ThemedView style={styles.titleRow}>
+      <ThemedView style={[styles.titleRow, styles.transparentBg]}>
         <ThemedText type="title" style={styles.title}>
           {vehicle.plate_no}
         </ThemedText>
@@ -58,16 +59,12 @@ export default function VehicleDetailScreen() {
           <SymbolView name="gearshape" size={24} tintColor={theme.text} />
         </Pressable>
       </ThemedView>
-      <ThemedText type="small" themeColor="textSecondary">
-        {vehicle.payment_model === 'percentage'
-          ? `Yüzdelik sistem (%${vehicle.percentage_rate ?? 25})`
-          : `Km sistemi (${vehicle.km_rate ?? '-'} TL/km)`}
-      </ThemedText>
+      <PaymentModelBadge vehicle={vehicle} />
 
       <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Vardiya Geçmişi
       </ThemedText>
-      <ShiftHistoryList vehicle={vehicle} />
+      <ShiftHistoryList vehicle={vehicle} showFilters />
     </ScrollView>
   );
 }
@@ -76,6 +73,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  transparentBg: { backgroundColor: 'transparent' },
   title: { flex: 1 },
   sectionTitle: { marginTop: Spacing.six },
   buttonPressed: { opacity: 0.7 },

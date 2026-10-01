@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -65,11 +66,7 @@ export function DriverHome() {
             <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
               <ThemedView type="backgroundElement" style={styles.card}>
                 <ThemedText type="smallBold">{item.plate_no}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.payment_model === 'percentage'
-                    ? `Yüzdelik sistem (%${item.percentage_rate ?? 25})`
-                    : `Km sistemi (${item.km_rate ?? '-'} TL/km)`}
-                </ThemedText>
+                <PaymentModelBadge vehicle={item} />
                 <ThemedText type="small" themeColor={openByMe[item.id] ? undefined : 'textSecondary'}>
                   {openByMe[item.id] ? 'Vardiyan açık — kapatmak için dokun' : 'Vardiya açmak için dokun'}
                 </ThemedText>

@@ -2,11 +2,13 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 
+import { PhotoViewButton } from '@/components/photo-view-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { PRESET_LABELS, presetToRange, type DatePreset } from '@/lib/date-presets';
 import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
 import { expenseCategoryLabel } from '@/lib/expense-categories';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
@@ -15,6 +17,8 @@ import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
   vehicle: Vehicle;
+  /** true ise tarih araligi + teslim durumu filtreleri ve ozet kutusu da gosterilir (su an arac detay sayfasinda kullaniliyor). */
+  showFilters?: boolean;
 };
 
 export function formatDateTime(iso: string): string {
@@ -34,12 +38,15 @@ function DetailRow({
   value,
   emphasize,
   last,
+  photoPath,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
   /** Son satirda alt cizgi cekilmez - tablonun kapanisi temiz dursun diye. */
   last?: boolean;
+  /** Verilirse (fotograf varsa) deger yanina kucuk bir fotograf ikonu eklenir, tiklayinca fotograf acilir. */
+  photoPath?: string | null;
 }) {
   const theme = useTheme();
   return (
@@ -48,9 +55,12 @@ function DetailRow({
       <ThemedText type="small" themeColor="textSecondary" style={styles.detailLabel}>
         {label}
       </ThemedText>
-      <ThemedText type={emphasize ? 'smallBold' : 'small'} style={styles.detailValue}>
-        {value}
-      </ThemedText>
+      <ThemedView style={styles.detailValueGroup}>
+        <ThemedText type={emphasize ? 'smallBold' : 'small'} style={styles.detailValue}>
+          {value}
+        </ThemedText>
+        {photoPath ? <PhotoViewButton path={photoPath} iconOnly /> : null}
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -81,6 +91,11 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
   const minutes = getShiftDurationMinutes(s.opened_at, s.closed_at);
   const isPercentage = s.payment_model === 'percentage';
   const hasCard = (s.card_amount ?? 0) > 0;
+  // "Toplam Diger Masraf" ve "Masraf Notu" ayri ayri degil, tek bir
+  // "Masraf" satirinda birlikte gosteriliyor.
+  const masrafValue = s.other_expenses_note
+    ? `${formatTL(s.other_expenses)} (${s.other_expenses_note})`
+    : formatTL(s.other_expenses);
 
   const settlementCardStyle =
     settlement?.state === 'pending'
@@ -159,14 +174,22 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
       </ThemedText>
 
       <ThemedView style={[styles.details, styles.transparentBg]}>
-        <DetailRow label="Açılış Km" value={s.opening_km != null ? String(s.opening_km) : '-'} />
-        <DetailRow label="Kapanış Km" value={s.closing_km != null ? String(s.closing_km) : '-'} />
+        <DetailRow
+          label="Açılış Km"
+          value={s.opening_km != null ? String(s.opening_km) : '-'}
+          photoPath={s.opening_km_photo_url}
+        />
+        <DetailRow
+          label="Kapanış Km"
+          value={s.closing_km != null ? String(s.closing_km) : '-'}
+          photoPath={s.closing_km_photo_url}
+        />
 
         {isPercentage ? (
           <>
             <DetailRow label="Hasılat (Tutar)" value={formatTL(s.total_amount)} />
             {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
-            <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} />
+            <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} photoPath={s.fuel_receipt_url} />
             {s.expense_items && s.expense_items.length > 0 ? (
               <>
                 {s.expense_items.map((item, idx) => (
@@ -176,14 +199,11 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
                     value={formatTL(item.amount)}
                   />
                 ))}
-                <DetailRow label="Toplam Diğer Masraf" value={formatTL(s.other_expenses)} emphasize />
+                <DetailRow label="Masraf" value={masrafValue} emphasize />
               </>
             ) : (
-              <DetailRow label="Diğer Masraf" value={formatTL(s.other_expenses)} />
+              <DetailRow label="Masraf" value={masrafValue} />
             )}
-            {s.other_expenses_note ? (
-              <DetailRow label="Masraf Notu" value={s.other_expenses_note} />
-            ) : null}
             <DetailRow label="Ondalık (Şoför Payı)" value={formatTL(s.driver_share)} />
             <DetailRow label="Net Kalan" value={formatTL(s.owner_total)} emphasize last={!hasCard} />
             {hasCard && <DetailRow label="Nakit Tutar" value={formatTL(s.net_cash)} emphasize last />}
@@ -207,9 +227,12 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
       )}
 
       {s.notes ? (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-          Not: {s.notes}
-        </ThemedText>
+        <ThemedView style={[styles.noteRow, styles.transparentBg]}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
+            Not: {s.notes}
+          </ThemedText>
+          {s.notes_photo_url ? <PhotoViewButton path={s.notes_photo_url} iconOnly /> : null}
+        </ThemedView>
       ) : null}
     </ThemedView>
   );
@@ -223,12 +246,14 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
   );
 }
 
-export function ShiftHistoryList({ vehicle }: Props) {
+export function ShiftHistoryList({ vehicle, showFilters }: Props) {
   const { profile } = useAuth();
   const isOwner = profile?.role === 'owner';
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [driverNames, setDriverNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [preset, setPreset] = useState<DatePreset>('all');
+  const [settlementFilter, setSettlementFilter] = useState<'all' | 'pending' | 'done'>('all');
 
   const load = () => {
     return Promise.all([listVehicleShifts(vehicle.id), listVehicleDrivers(vehicle.id)]).then(
@@ -264,10 +289,33 @@ export function ShiftHistoryList({ vehicle }: Props) {
     }, [vehicle.id])
   );
 
-  const pendingCount = useMemo(
-    () => shifts.filter((s) => getSettlementState(s) !== 'confirmed').length,
-    [shifts]
-  );
+  const visibleShifts = useMemo(() => {
+    const { from, to } = presetToRange(preset);
+    return shifts.filter((s) => {
+      if (from && s.opened_at < from) return false;
+      if (to && s.opened_at > to) return false;
+      if (settlementFilter === 'all') return true;
+      const state = getSettlementState(s);
+      return settlementFilter === 'done' ? state === 'confirmed' : state !== 'confirmed';
+    });
+  }, [shifts, preset, settlementFilter]);
+
+  const settlementTotals = useMemo(() => {
+    let pendingTotal = 0;
+    let doneTotal = 0;
+    let pendingCount = 0;
+    let doneCount = 0;
+    visibleShifts.forEach((s) => {
+      if (getSettlementState(s) === 'confirmed') {
+        doneTotal += settlementAmount(s);
+        doneCount += 1;
+      } else {
+        pendingTotal += settlementAmount(s);
+        pendingCount += 1;
+      }
+    });
+    return { pendingTotal, doneTotal, pendingCount, doneCount };
+  }, [visibleShifts]);
 
   async function handleConfirmOne(shift: Shift) {
     // Anında geri bildirim icin: ag cevabini beklemeden listeyi guncelle,
@@ -305,41 +353,102 @@ export function ShiftHistoryList({ vehicle }: Props) {
   }
 
   return (
-    <ThemedView style={styles.list}>
-      {pendingCount > 0 && (
+    <ThemedView style={[styles.list, styles.transparentBg]}>
+      {showFilters && (
+        <>
+          <ThemedView style={[styles.filterChipRow, styles.transparentBg]}>
+            {(Object.keys(PRESET_LABELS) as DatePreset[]).map((p) => (
+              <FilterChip key={p} label={PRESET_LABELS[p]} active={preset === p} onPress={() => setPreset(p)} />
+            ))}
+          </ThemedView>
+          <ThemedView style={[styles.filterChipRow, styles.transparentBg]}>
+            <FilterChip label="Tümü" active={settlementFilter === 'all'} onPress={() => setSettlementFilter('all')} />
+            <FilterChip
+              label={isOwner ? 'Teslim Alınmayan' : 'Teslim Etmediğim'}
+              active={settlementFilter === 'pending'}
+              onPress={() => setSettlementFilter('pending')}
+            />
+            <FilterChip
+              label={isOwner ? 'Teslim Alınan' : 'Teslim Ettiğim'}
+              active={settlementFilter === 'done'}
+              onPress={() => setSettlementFilter('done')}
+            />
+          </ThemedView>
+          <ThemedView type="backgroundElement" style={styles.summaryBox}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {settlementTotals.pendingCount} karpin ·{' '}
+              {settlementTotals.pendingTotal.toFixed(2)} ₺
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {isOwner ? 'Teslim alınan' : 'Teslim ettiğim'}: {settlementTotals.doneCount} karpin ·{' '}
+              {settlementTotals.doneTotal.toFixed(2)} ₺
+            </ThemedText>
+          </ThemedView>
+        </>
+      )}
+
+      {!showFilters && settlementTotals.pendingCount > 0 && (
         <ThemedText type="small" themeColor="textSecondary">
-          {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {pendingCount} karpin
+          {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {settlementTotals.pendingCount} karpin
         </ThemedText>
       )}
-      {shifts.map((s) => {
-        const state = getSettlementState(s);
-        const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
-        const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
-        return (
-          <ShiftHistoryCard
-            key={s.id}
-            shift={s}
-            driverName={driverNames[s.driver_id]}
-            vehicle={vehicle}
-            settlement={{
-              state,
-              label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
-              onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
-              confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
-              confirmMessage: isOwner
-                ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
-                : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
-              confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
-            }}
-          />
-        );
-      })}
+
+      {visibleShifts.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Bu filtrelere uyan kapanmış vardiya yok.
+        </ThemedText>
+      ) : (
+        visibleShifts.map((s) => {
+          const state = getSettlementState(s);
+          const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+          const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
+          return (
+            <ShiftHistoryCard
+              key={s.id}
+              shift={s}
+              driverName={driverNames[s.driver_id]}
+              vehicle={vehicle}
+              settlement={{
+                state,
+                label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
+                onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
+                confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+                confirmMessage: isOwner
+                  ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
+                  : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+                confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
+              }}
+            />
+          );
+        })
+      )}
     </ThemedView>
   );
 }
 
+function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={[styles.filterChip, active && styles.filterChipActive]} onPress={onPress}>
+      <ThemedText style={active ? styles.filterChipTextActive : undefined} type="small">
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  list: { gap: Spacing.two },
+  list: { gap: Spacing.two, backgroundColor: 'transparent' },
+  filterChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: '#94A3B8',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  filterChipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
+  filterChipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
+  summaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   batchButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
@@ -373,9 +482,16 @@ const styles = StyleSheet.create({
   },
   detailLabel: { flexShrink: 1 },
   detailValue: { flexShrink: 0, textAlign: 'right' },
+  detailValueGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: 'transparent',
+  },
+  noteRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.half },
   // ThemedView tipsiz kullanilinca varsayilan olarak opak "background"
   // (beyaz) rengini basinca kartin krem rengiyle uyusmuyordu - bu satirlarla
   // iceride kalan kutular tamamen seffaf kalip kartin rengini gosteriyor.
   transparentBg: { backgroundColor: 'transparent' },
-  note: { marginTop: Spacing.half },
+  note: {},
 });

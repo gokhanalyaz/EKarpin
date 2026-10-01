@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 
 import { ThemedText } from '@/components/themed-text';
 import { getSignedPhotoUrl } from '@/lib/shifts';
 
 type Props = {
   path: string;
-  label: string;
+  label?: string;
+  /** true ise metin yerine kucuk bir fotograf ikonu gosterir (DetailRow'un yanina gomulu kullanim icin). */
+  iconOnly?: boolean;
 };
 
 /** Private storage'daki bir fotografi (imzali link uretip) tam ekran gosteren buton. */
-export function PhotoViewButton({ path, label }: Props) {
+export function PhotoViewButton({ path, label, iconOnly }: Props) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
@@ -36,8 +39,15 @@ export function PhotoViewButton({ path, label }: Props) {
 
   return (
     <>
-      <Pressable style={({ pressed }) => [styles.button, pressed && styles.pressed]} onPress={handleOpen}>
-        <ThemedText type="linkPrimary">{label}</ThemedText>
+      <Pressable
+        hitSlop={8}
+        style={({ pressed }) => [iconOnly ? styles.iconButton : styles.button, pressed && styles.pressed]}
+        onPress={handleOpen}>
+        {iconOnly ? (
+          <SymbolView name="photo" size={16} tintColor="#8A5B00" />
+        ) : (
+          <ThemedText type="linkPrimary">{label}</ThemedText>
+        )}
       </Pressable>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
         <Pressable style={styles.backdrop} onPress={() => setVisible(false)}>
@@ -56,6 +66,7 @@ export function PhotoViewButton({ path, label }: Props) {
 
 const styles = StyleSheet.create({
   button: { paddingVertical: 8 },
+  iconButton: { paddingHorizontal: 4, paddingVertical: 2 },
   pressed: { opacity: 0.6 },
   backdrop: {
     flex: 1,

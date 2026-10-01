@@ -2,7 +2,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet } from 'react-native';
 
-import { PhotoViewButton } from '@/components/photo-view-button';
 import { ShiftHistoryCard } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -91,12 +90,6 @@ export default function ShiftDetailScreen() {
     );
   }
 
-  const hasAnyPhoto =
-    shift.opening_km_photo_url ||
-    shift.closing_km_photo_url ||
-    shift.fuel_receipt_url ||
-    shift.notes_photo_url;
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ThemedText type="title" style={styles.title}>
@@ -128,26 +121,6 @@ export default function ShiftDetailScreen() {
             : undefined
         }
       />
-
-      {hasAnyPhoto ? (
-        <ThemedView style={styles.photos}>
-          <ThemedText type="eyebrow" style={styles.photosTitle}>
-            Fotoğraflar
-          </ThemedText>
-          {shift.opening_km_photo_url && (
-            <PhotoViewButton path={shift.opening_km_photo_url} label="Açılış Km Fotoğrafını Gör" />
-          )}
-          {shift.closing_km_photo_url && (
-            <PhotoViewButton path={shift.closing_km_photo_url} label="Kapanış Km Fotoğrafını Gör" />
-          )}
-          {shift.fuel_receipt_url && (
-            <PhotoViewButton path={shift.fuel_receipt_url} label="Motorin Fişini Gör" />
-          )}
-          {shift.notes_photo_url && (
-            <PhotoViewButton path={shift.notes_photo_url} label="Not Fotoğrafını Gör" />
-          )}
-        </ThemedView>
-      ) : null}
     </ScrollView>
   );
 }
@@ -156,6 +129,4 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { padding: Spacing.four, gap: Spacing.three },
   title: { textAlign: 'center', marginBottom: Spacing.two },
-  photos: { gap: Spacing.half, marginTop: Spacing.two },
-  photosTitle: { marginBottom: Spacing.one },
 });

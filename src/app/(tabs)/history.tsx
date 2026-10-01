@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { PRESET_LABELS, presetToRange, type DatePreset } from '@/lib/date-presets';
 import { queryShifts, type Shift } from '@/lib/shifts';
 import {
   getSettlementLabel,
@@ -17,29 +18,6 @@ import {
 } from '@/lib/settlement';
 import { listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
 import { listAssignedVehicles, listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
-
-type DatePreset = 'today' | 'week' | 'month' | 'all';
-
-function presetToRange(preset: DatePreset): { from?: string; to?: string } {
-  if (preset === 'all') return {};
-  const now = new Date();
-  const from = new Date(now);
-  if (preset === 'today') {
-    from.setHours(0, 0, 0, 0);
-  } else if (preset === 'week') {
-    from.setDate(from.getDate() - 7);
-  } else {
-    from.setDate(from.getDate() - 30);
-  }
-  return { from: from.toISOString(), to: now.toISOString() };
-}
-
-const PRESET_LABELS: Record<DatePreset, string> = {
-  today: 'Bugün',
-  week: 'Son 7 Gün',
-  month: 'Son 30 Gün',
-  all: 'Tüm Zamanlar',
-};
 
 export default function HistoryScreen() {
   const { vehicleId: initialVehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
@@ -338,7 +316,7 @@ const styles = StyleSheet.create({
   container: { padding: Spacing.four, gap: Spacing.two, paddingBottom: Spacing.six },
   title: { marginBottom: Spacing.two },
   sectionTitle: { marginTop: Spacing.three },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, backgroundColor: 'transparent' },
   chip: {
     borderWidth: 1,
     borderColor: '#94A3B8',
@@ -351,7 +329,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
   chipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   loading: { marginTop: Spacing.four },
-  list: { gap: Spacing.two, marginTop: Spacing.two },
+  list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
   batchButton: {
     backgroundColor: Brand.primary,

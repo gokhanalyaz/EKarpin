@@ -14,6 +14,15 @@ export type Vehicle = {
   expected_revenue_per_km: number | null;
 };
 
+/** Odeme modelini kisa, tutarli bir etiket olarak dondurur - tum ekranlarda ayni formati kullanalim diye tek yerde tutuluyor. */
+export function paymentModelLabel(
+  vehicle: Pick<Vehicle, 'payment_model' | 'percentage_rate' | 'km_rate'>
+): string {
+  return vehicle.payment_model === 'percentage'
+    ? `Yüzdelik (%${vehicle.percentage_rate ?? 25})`
+    : `Km (${vehicle.km_rate ?? '-'} TL/km)`;
+}
+
 export async function listOwnerVehicles(ownerId: string): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from('vehicles')
