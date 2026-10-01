@@ -23,9 +23,18 @@ type Props = {
   cornerTimeIso?: string | null;
 };
 
-function formatOpenedTime(iso: string): string {
+/** Saat damgasini kucuk kose notu icin bicimlendirir - bugunse sadece saat
+ * ("18:45"), tarih atladiysa (dunku/daha eski bir vardiyaysa) onune gun.ay
+ * da eklenir ("30.09 18:45") ki hangi gune ait oldugu belli olsun. */
+function formatCornerTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const now = new Date();
+  const isToday =
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const time = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return time;
+  const date = d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+  return `${date} ${time}`;
 }
 
 /**
@@ -45,7 +54,7 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subL
       {cornerTimeIso ? (
         <ThemedView style={[styles.openedAtBadge, styles.transparentBg]}>
           <ThemedText type="small" style={styles.openedAtText}>
-            {cornerTimeLabel} {formatOpenedTime(cornerTimeIso)}
+            {cornerTimeLabel} {formatCornerTime(cornerTimeIso)}
           </ThemedText>
         </ThemedView>
       ) : null}
@@ -92,7 +101,7 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, gap: Spacing.two, alignItems: 'flex-start' },
   transparentBg: { backgroundColor: 'transparent' },
-  rightColumn: { alignItems: 'center', gap: Spacing.half },
+  rightColumn: { alignItems: 'center', gap: 0 },
   statusText: {
     fontFamily: FontFamily.bodyBold,
     fontSize: 13,
@@ -100,7 +109,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   statusActiveText: { color: '#16A34A' },
-  subLabel: { marginTop: Spacing.half },
+  subLabel: { marginTop: Spacing.two },
   subLabelBold: { fontFamily: FontFamily.bodyBold },
   openedAtBadge: {
     position: 'absolute',
@@ -113,5 +122,5 @@ const styles = StyleSheet.create({
     fontSize: 20,
     letterSpacing: 1,
   },
-  carIcon: {},
+  carIcon: { marginBottom: -14 },
 });
