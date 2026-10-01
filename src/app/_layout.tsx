@@ -5,25 +5,15 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AuthProvider } from '@/contexts/auth-context';
+import { resolveNotificationRoute } from '@/lib/notification-routing';
+import { setPendingNotificationTarget } from '@/lib/pending-notification';
 
 SplashScreen.preventAutoHideAsync();
 
-/** Bir bildirime dokunuldugunda, icindeki veriye gore dogru ekrana yonlendirir. */
+/** Bir bildirime dokunuldugunda (uygulama ZATEN acikken/arka plandayken), dogru ekrana yonlendirir. */
 function handleNotificationData(data: Record<string, unknown> | undefined) {
-  if (!data) return;
-  const type = data.type;
-  if ((type === 'shift_opened' || type === 'shift_closed') && typeof data.shiftId === 'string') {
-    router.push(`/shift-detail/${data.shiftId}`);
-  } else if (type === 'vehicle_alert' && typeof data.vehicleId === 'string') {
-    router.push(`/vehicle/${data.vehicleId}`);
-  } else if (type === 'settlement_pending' && typeof data.vehicleId === 'string') {
-    // Sofor teslim ettigini bildirdi - arac sahibi onaylasin diye arac
-    // detay sayfasina goturuyoruz (orada teslim alinmayanlari isaretleyebilir).
-    router.push(`/vehicle/${data.vehicleId}`);
-  } else if (type === 'settlement_confirmed' && typeof data.vehicleId === 'string') {
-    // Arac sahibi teslimi onayladi - sofore kendi vardiya ekranini gosteriyoruz.
-    router.push(`/shift/${data.vehicleId}`);
-  }
+  const target = resolveNotificationRoute(data);
+  if (target) router.push(target as any);
 }
 
 export default function RootLayout() {
@@ -34,14 +24,21 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    // Uygulama kapaliyken bir bildirime dokunularak acildiysa (cold start).
+    // Uygulama kapaliyken bir bildirime dokunularak acildiysa (cold start):
+    // henuz oturum/navigasyon hazir olmadigi icin hemen router.push YAPMIYORUZ
+    // (index.tsx'in /home yonlendirmesiyle yarisip kaybediyordu). Hedefi
+    // bekletiyoruz, index.tsx oturumu dogrulayinca bunu okuyup oraya gidiyor.
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
-        handleNotificationData(response.notification.request.content.data as Record<string, unknown>);
+        const target = resolveNotificationRoute(
+          response.notification.request.content.data as Record<string, unknown>
+        );
+        if (target) setPendingNotificationTarget(target);
       }
     });
 
-    // Uygulama acikken/arka plandayken bir bildirime dokunulursa.
+    // Uygulama acikken/arka plandayken bir bildirime dokunulursa (navigasyon
+    // zaten hazir, dogrudan yonlendirebiliriz).
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       handleNotificationData(response.notification.request.content.data as Record<string, unknown>);
     });

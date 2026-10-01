@@ -48,7 +48,7 @@ export async function markDeliveredAndNotify(shifts: Shift[], driverName: string
           token,
           'Teslim Onayı Bekleniyor',
           `${driverName}, ${formatShiftNumbers(group)} teslim etti. Onaylamak için dokun.`,
-          { type: 'settlement_pending', vehicleId }
+          { type: 'settlement_pending', vehicleId, shiftIds: group.map((s) => s.id) }
         );
       })
       .catch(() => {});
@@ -72,7 +72,7 @@ export async function markReceivedAndNotify(shifts: Shift[]): Promise<void> {
           token,
           'Teslim Onaylandı',
           `Araç sahibiniz ${formatShiftNumbers(group)} tesliminizi onayladı.`,
-          { type: 'settlement_confirmed', vehicleId }
+          { type: 'settlement_confirmed', vehicleId, shiftIds: group.map((s) => s.id) }
         );
       })
       .catch(() => {});

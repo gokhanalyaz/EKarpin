@@ -1,18 +1,22 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet } from 'react-native';
 
 import { PhotoViewButton } from '@/components/photo-view-button';
 import { ShiftHistoryCard } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { getShift, type Shift } from '@/lib/shifts';
+import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { getVehicle, type Vehicle } from '@/lib/vehicles';
 
 export default function ShiftDetailScreen() {
   const { shiftId } = useLocalSearchParams<{ shiftId: string }>();
+  const { profile } = useAuth();
+  const isOwner = profile?.role === 'owner';
   const [shift, setShift] = useState<Shift | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [driverName, setDriverName] = useState<string>('Şoför');
@@ -41,6 +45,20 @@ export default function ShiftDetailScreen() {
       setLoading(false);
     }
   }, [shiftId]);
+
+  async function handleConfirmSettlement() {
+    if (!shift) return;
+    try {
+      if (isOwner) {
+        await markReceivedAndNotify([shift]);
+      } else {
+        await markDeliveredAndNotify([shift], profile?.full_name ?? 'Bir şoför');
+      }
+      await load();
+    } catch (e: any) {
+      Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
+  }
 
   useEffect(() => {
     load();
@@ -76,7 +94,31 @@ export default function ShiftDetailScreen() {
         {vehicle.plate_no}
       </ThemedText>
 
-      <ShiftHistoryCard shift={shift} driverName={driverName} vehicle={vehicle} pressable={false} />
+      <ShiftHistoryCard
+        shift={shift}
+        driverName={driverName}
+        vehicle={vehicle}
+        pressable={false}
+        settlement={
+          shift.status === 'closed'
+            ? (() => {
+                const state = getSettlementState(shift);
+                const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+                const numLabel = shift.shift_no != null ? `#${shift.shift_no} numaralı karpini` : 'bu karpini';
+                return {
+                  state,
+                  label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
+                  onConfirm: canAct ? handleConfirmSettlement : undefined,
+                  confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+                  confirmMessage: isOwner
+                    ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
+                    : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+                  confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
+                };
+              })()
+            : undefined
+        }
+      />
 
       {hasAnyPhoto ? (
         <ThemedView style={styles.photos}>
