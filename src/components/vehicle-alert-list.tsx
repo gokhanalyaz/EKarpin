@@ -44,7 +44,7 @@ export function VehicleAlertList({ vehicleId }: Props) {
 
   return (
     <ThemedView style={styles.wrapper}>
-      <ThemedText type="smallBold" style={styles.title}>
+      <ThemedText type="eyebrow" style={styles.title}>
         Şoför Bildirimleri
       </ThemedText>
       <ThemedView style={styles.list}>

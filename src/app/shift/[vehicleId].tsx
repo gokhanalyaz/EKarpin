@@ -104,7 +104,7 @@ export default function ShiftScreen() {
           <ShiftOpenForm vehicle={vehicle} onOpened={load} />
         )}
 
-        <ThemedText type="smallBold" style={{ marginTop: Spacing.six, marginBottom: Spacing.two }}>
+        <ThemedText type="eyebrow" style={{ marginTop: Spacing.six, marginBottom: Spacing.two }}>
           Vardiya Geçmişi
         </ThemedText>
         <ShiftHistoryList vehicle={vehicle} />

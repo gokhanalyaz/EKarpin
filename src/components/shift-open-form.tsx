@@ -113,7 +113,7 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
         {vehicle.plate_no}
       </ThemedText>
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Açılış Km
       </ThemedText>
       {suggestedKm != null && (
@@ -131,7 +131,7 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
         onChangeText={setKm}
       />
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Km Sayacı Fotoğrafı
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>

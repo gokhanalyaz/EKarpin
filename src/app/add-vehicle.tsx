@@ -64,7 +64,7 @@ export default function AddVehicleScreen() {
           onChangeText={setPlateNo}
         />
 
-        <ThemedText type="smallBold">Çalışma Sistemi</ThemedText>
+        <ThemedText type="eyebrow">Çalışma Sistemi</ThemedText>
         <ThemedView style={styles.roleRow}>
           <Pressable
             style={[

@@ -4,7 +4,7 @@ import { Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code' | 'eyebrow';
   themeColor?: ThemeColor;
 };
 
@@ -23,6 +23,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'link' && styles.link,
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
+        type === 'eyebrow' && styles.eyebrow,
         style,
       ]}
       {...rest}
@@ -44,17 +45,26 @@ const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontSize: 34,
+    fontWeight: 800,
+    lineHeight: 38,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  eyebrow: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: 700,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
   },
   link: {
     lineHeight: 30,

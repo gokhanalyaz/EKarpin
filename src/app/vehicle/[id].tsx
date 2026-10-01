@@ -191,7 +191,7 @@ export default function VehicleDetailScreen() {
 
         {vehicle.payment_model === 'percentage' && (
           <>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
+            <ThemedText type="eyebrow" style={styles.sectionTitle}>
               Gider Kategorileri
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -219,7 +219,7 @@ export default function VehicleDetailScreen() {
               })}
             </ThemedView>
 
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
+            <ThemedText type="eyebrow" style={styles.sectionTitle}>
               Km Karşılaştırma
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -251,7 +251,7 @@ export default function VehicleDetailScreen() {
           </>
         )}
 
-        <ThemedText type="smallBold" style={styles.sectionTitle}>
+        <ThemedText type="eyebrow" style={styles.sectionTitle}>
           Şoförler
         </ThemedText>
         {drivers.length === 0 ? (
@@ -295,7 +295,7 @@ export default function VehicleDetailScreen() {
         )}
 
         <ThemedView style={[styles.sectionTitle, styles.historyHeaderRow]}>
-          <ThemedText type="smallBold">Vardiya Geçmişi</ThemedText>
+          <ThemedText type="eyebrow">Vardiya Geçmişi</ThemedText>
           <Pressable onPress={() => router.push(`/history?vehicleId=${vehicle.id}`)}>
             <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
               Filtrele
@@ -306,7 +306,7 @@ export default function VehicleDetailScreen() {
 
         {showAddDriver ? (
           <>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
+            <ThemedText type="eyebrow" style={styles.sectionTitle}>
               Şoför Ekle
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>

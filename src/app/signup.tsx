@@ -106,7 +106,7 @@ export default function SignupScreen() {
             Hesap Oluştur
           </ThemedText>
 
-          <ThemedText type="smallBold">Ben bir...</ThemedText>
+          <ThemedText type="eyebrow">Ben bir...</ThemedText>
           <ThemedView style={styles.roleRow}>
             <Pressable
               style={[

@@ -85,7 +85,7 @@ export function VehicleAlertForm({ vehicle, shiftId, onClose }: Props) {
 
   return (
     <ThemedView type="backgroundElement" style={styles.container}>
-      <ThemedText type="smallBold">Araç Sahibine Bildir</ThemedText>
+      <ThemedText type="eyebrow">Araç Sahibine Bildir</ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
         Örn. araç arızalı, kaza oldu, lastik patladı gibi acil durumları buradan bildirebilirsin.
       </ThemedText>

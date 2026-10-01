@@ -191,7 +191,7 @@ export default function HistoryScreen() {
         Karpin Geçmişi
       </ThemedText>
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Araç
       </ThemedText>
       <ThemedView style={styles.chipRow}>
@@ -208,7 +208,7 @@ export default function HistoryScreen() {
 
       {isOwner && (
         <>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Şoför
           </ThemedText>
           <ThemedView style={styles.chipRow}>
@@ -229,7 +229,7 @@ export default function HistoryScreen() {
         </>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Tarih Aralığı
       </ThemedText>
       <ThemedView style={styles.chipRow}>
@@ -252,7 +252,7 @@ export default function HistoryScreen() {
         </ThemedView>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Teslim Durumu
       </ThemedText>
       <ThemedView style={styles.chipRow}>
@@ -282,7 +282,7 @@ export default function HistoryScreen() {
         </ThemedView>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
       </ThemedText>
       {loading ? (

@@ -131,7 +131,7 @@ export default function ShiftDetailScreen() {
 
       {hasAnyPhoto ? (
         <ThemedView style={styles.photos}>
-          <ThemedText type="smallBold" style={styles.photosTitle}>
+          <ThemedText type="eyebrow" style={styles.photosTitle}>
             Fotoğraflar
           </ThemedText>
           {shift.opening_km_photo_url && (

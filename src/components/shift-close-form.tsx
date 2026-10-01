@@ -259,7 +259,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         {vehicle.plate_no} · Açılış km: {shift.opening_km ?? '-'}
       </ThemedText>
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Kapanış Km
       </ThemedText>
       <TextInput
@@ -278,7 +278,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
       {!isPercentage && kmDiscountLimit != null && (
         <>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Km Düşümü (İsteğe Bağlı)
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
@@ -306,7 +306,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         </>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Km Sayacı Fotoğrafı
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
@@ -323,7 +323,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
       {isPercentage && (
         <>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Tutar (Hasılat)
           </ThemedText>
           <TextInput
@@ -335,7 +335,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             onChangeText={setTotalAmount}
           />
 
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Kredi Kartı
           </ThemedText>
           <TextInput
@@ -347,7 +347,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             onChangeText={setCardAmount}
           />
 
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Motorin
           </ThemedText>
           <TextInput
@@ -378,7 +378,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
           )}
 
           {enabledExpenseCategories.length > 0 && (
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Diğer Masraflar
           </ThemedText>
           )}
@@ -430,7 +430,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         </>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Not (Araç Sahibine)
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
@@ -470,7 +470,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         </>
       )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Aracı Teslim Et
       </ThemedText>
       {drivers.length === 0 ? (
