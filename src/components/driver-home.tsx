@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedView } from '@/components/themed-view';
+import { VehicleCard } from '@/components/vehicle-card';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { getAnyOpenShift } from '@/lib/shifts';
@@ -64,13 +64,13 @@ export function DriverHome() {
           }
           renderItem={({ item }) => (
             <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
-              <ThemedView type="backgroundElement" style={styles.card}>
-                <ThemedText type="smallBold">{item.plate_no}</ThemedText>
-                <PaymentModelBadge vehicle={item} />
-                <ThemedText type="small" themeColor={openByMe[item.id] ? undefined : 'textSecondary'}>
-                  {openByMe[item.id] ? 'Vardiyan açık — kapatmak için dokun' : 'Vardiya açmak için dokun'}
-                </ThemedText>
-              </ThemedView>
+              <VehicleCard
+                vehicle={item}
+                statusActive={openByMe[item.id]}
+                statusText={
+                  openByMe[item.id] ? 'Vardiyan açık — kapatmak için dokun' : 'Vardiya açmak için dokun'
+                }
+              />
             </Pressable>
           )}
         />
@@ -90,5 +90,4 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.four, paddingBottom: Spacing.four, flexGrow: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
 });

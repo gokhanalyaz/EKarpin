@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedView } from '@/components/themed-view';
+import { VehicleCard } from '@/components/vehicle-card';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { getAnyOpenShift, type Shift } from '@/lib/shifts';
@@ -73,15 +73,13 @@ export function OwnerHome() {
             const s = status[item.id];
             return (
               <Pressable onPress={() => router.push(`/vehicle/${item.id}`)}>
-                <ThemedView type="backgroundElement" style={styles.card}>
-                  <ThemedText type="smallBold">{item.plate_no}</ThemedText>
-                  <PaymentModelBadge vehicle={item} />
-                  <ThemedText type="small" themeColor={s?.open ? undefined : 'textSecondary'}>
-                    {s?.open
-                      ? `Vardiya açık${s.driverName ? ` — ${s.driverName}` : ''}`
-                      : 'Vardiya kapalı'}
-                  </ThemedText>
-                </ThemedView>
+                <VehicleCard
+                  vehicle={item}
+                  statusActive={s?.open}
+                  statusText={
+                    s?.open ? `Vardiya açık${s.driverName ? ` — ${s.driverName}` : ''}` : 'Vardiya kapalı'
+                  }
+                />
               </Pressable>
             );
           }}
@@ -108,7 +106,6 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.four, paddingBottom: Spacing.four, flexGrow: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   addButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
