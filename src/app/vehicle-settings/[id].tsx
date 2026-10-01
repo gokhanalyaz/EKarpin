@@ -19,6 +19,7 @@ import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { DEFAULT_EXPENSE_CATEGORIES, EXPENSE_CATEGORIES } from '@/lib/expense-categories';
 import { formatPhoneWithPrefix } from '@/lib/format';
+import { getAnyOpenShift } from '@/lib/shifts';
 import {
   assignDriver,
   findDriverByPhone,
@@ -27,7 +28,14 @@ import {
   unassignDriver,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { getVehicle, setEnabledExpenseCategories, setExpectedRevenuePerKm, type Vehicle } from '@/lib/vehicles';
+import {
+  getVehicle,
+  setEnabledExpenseCategories,
+  setExpectedRevenuePerKm,
+  updateVehiclePaymentModel,
+  type PaymentModel,
+  type Vehicle,
+} from '@/lib/vehicles';
 
 /** Aracin ayar sayfasi: gider kategorileri, km karsilastirma orani ve
  * sofor yonetimi (ekleme/silme, km dusum hakki) burada toplandi - arac
@@ -43,6 +51,12 @@ export default function VehicleSettingsScreen() {
   const [revenueRateInput, setRevenueRateInput] = useState('');
   const [savingRevenueRate, setSavingRevenueRate] = useState(false);
 
+  const [paymentModelChoice, setPaymentModelChoice] = useState<PaymentModel>('percentage');
+  const [percentageRateInput, setPercentageRateInput] = useState('25');
+  const [kmRateInput, setKmRateInput] = useState('');
+  const [savingPaymentModel, setSavingPaymentModel] = useState(false);
+  const [hasOpenShift, setHasOpenShift] = useState(false);
+
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
 
@@ -54,9 +68,17 @@ export default function VehicleSettingsScreen() {
     if (!id) return;
     if (!hasLoadedRef.current) setLoading(true);
     try {
-      const [v, d] = await Promise.all([getVehicle(id), listVehicleDrivers(id)]);
+      const [v, d, openShift] = await Promise.all([
+        getVehicle(id),
+        listVehicleDrivers(id),
+        getAnyOpenShift(id).catch(() => null),
+      ]);
       setVehicle(v);
       setDrivers(d);
+      setHasOpenShift(!!openShift);
+      setPaymentModelChoice(v.payment_model);
+      setPercentageRateInput(v.percentage_rate != null ? String(v.percentage_rate) : '25');
+      setKmRateInput(v.km_rate != null ? String(v.km_rate) : '');
       setRevenueRateInput(v.expected_revenue_per_km != null ? String(v.expected_revenue_per_km) : '');
       setLimitInputs(
         Object.fromEntries(
@@ -87,6 +109,50 @@ export default function VehicleSettingsScreen() {
     } catch (e: any) {
       setVehicle({ ...vehicle, enabled_expense_categories: current });
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
+  }
+
+  async function handleSavePaymentModel() {
+    if (!vehicle) return;
+    if (hasOpenShift) {
+      Alert.alert(
+        'Vardiya açık',
+        'Çalışma sistemini değiştirmeden önce bu aracın açık vardiyasının kapatılması gerekiyor.'
+      );
+      return;
+    }
+    let percentageRate: number | undefined;
+    let kmRate: number | undefined;
+    if (paymentModelChoice === 'percentage') {
+      const raw = percentageRateInput.trim();
+      const parsed = Number(raw.replace(',', '.'));
+      if (!raw || Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+        Alert.alert('Geçersiz değer', 'Şoför payını 0-100 arasında bir yüzde olarak girin.');
+        return;
+      }
+      percentageRate = parsed;
+    } else {
+      const raw = kmRateInput.trim();
+      const parsed = Number(raw.replace(',', '.'));
+      if (!raw || Number.isNaN(parsed) || parsed <= 0) {
+        Alert.alert('Geçersiz değer', 'Km başına ücreti geçerli bir sayı olarak girin.');
+        return;
+      }
+      kmRate = parsed;
+    }
+    setSavingPaymentModel(true);
+    try {
+      await updateVehiclePaymentModel(vehicle.id, {
+        paymentModel: paymentModelChoice,
+        percentageRate,
+        kmRate,
+      });
+      await load();
+      Alert.alert('Kaydedildi', 'Çalışma sistemi güncellendi. Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler.');
+    } catch (e: any) {
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setSavingPaymentModel(false);
     }
   }
 
@@ -213,6 +279,75 @@ export default function VehicleSettingsScreen() {
       <ThemedText type="small" themeColor="textSecondary" style={styles.plate}>
         {vehicle.plate_no}
       </ThemedText>
+
+      <ThemedText type="eyebrow" style={styles.firstSectionTitle}>
+        Çalışma Sistemi
+      </ThemedText>
+      {hasOpenShift ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Bu aracın şu an açık bir vardiyası var. Çalışma sistemini değiştirebilmek için önce
+          vardiyanın kapatılması gerekiyor.
+        </ThemedText>
+      ) : (
+        <ThemedText type="small" themeColor="textSecondary">
+          Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler - geçmiş karpinler
+          kayıt edildikleri sistemde görünmeye devam eder.
+        </ThemedText>
+      )}
+      <ThemedView style={[styles.roleRow, styles.transparentBg]}>
+        <Pressable
+          disabled={hasOpenShift}
+          style={[
+            styles.roleButton,
+            { borderColor: theme.backgroundSelected },
+            paymentModelChoice === 'percentage' && styles.roleButtonActive,
+            hasOpenShift && styles.roleButtonDisabled,
+          ]}
+          onPress={() => setPaymentModelChoice('percentage')}>
+          <ThemedText style={paymentModelChoice === 'percentage' ? styles.roleTextActive : undefined}>
+            Yüzdelik
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          disabled={hasOpenShift}
+          style={[
+            styles.roleButton,
+            { borderColor: theme.backgroundSelected },
+            paymentModelChoice === 'km_based' && styles.roleButtonActive,
+            hasOpenShift && styles.roleButtonDisabled,
+          ]}
+          onPress={() => setPaymentModelChoice('km_based')}>
+          <ThemedText style={paymentModelChoice === 'km_based' ? styles.roleTextActive : undefined}>
+            Km Sistemi
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+      <ThemedView style={[styles.inlineRow, { marginTop: Spacing.three }]}>
+        <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+          {paymentModelChoice === 'percentage' ? 'Şoför Payı (%)' : 'Km Başına Ücret (₺)'}
+        </ThemedText>
+        <TextInput
+          editable={!hasOpenShift}
+          style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          placeholder={paymentModelChoice === 'percentage' ? '25' : '0.00'}
+          placeholderTextColor={theme.textSecondary}
+          keyboardType="decimal-pad"
+          value={paymentModelChoice === 'percentage' ? percentageRateInput : kmRateInput}
+          onChangeText={paymentModelChoice === 'percentage' ? setPercentageRateInput : setKmRateInput}
+        />
+      </ThemedView>
+      <Pressable
+        disabled={hasOpenShift || savingPaymentModel}
+        style={({ pressed }) => [
+          styles.button,
+          styles.paymentModelSaveButton,
+          (hasOpenShift || savingPaymentModel || pressed) && styles.pressed,
+        ]}
+        onPress={handleSavePaymentModel}>
+        <ThemedText style={styles.buttonText}>
+          {savingPaymentModel ? 'Kaydediliyor...' : 'Çalışma Sistemini Kaydet'}
+        </ThemedText>
+      </Pressable>
 
       <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Gider Kategorileri
@@ -362,7 +497,21 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
   title: { marginBottom: Spacing.one },
   plate: { marginBottom: Spacing.two },
+  firstSectionTitle: {},
   sectionTitle: { marginTop: Spacing.five },
+  transparentBg: { backgroundColor: 'transparent' },
+  roleRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
+  roleButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  roleButtonActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
+  roleButtonDisabled: { opacity: 0.5 },
+  roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
+  paymentModelSaveButton: { marginTop: Spacing.three, marginBottom: Spacing.two },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.three, backgroundColor: 'transparent' },
   chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999, borderWidth: 1 },
   chipOn: { backgroundColor: '#2563EB1F', borderColor: '#2563EB' },

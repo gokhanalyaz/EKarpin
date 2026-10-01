@@ -77,6 +77,28 @@ export async function getVehicle(id: string): Promise<Vehicle> {
   return data as Vehicle;
 }
 
+/**
+ * Arac sahibi, calisma sistemini (yuzdelik/km) ve ilgili orani diledigi
+ * zaman degistirebilir. Geçmis vardiyalar kendi payment_model'ini zaten
+ * ayrica sakladigi icin (Shift.payment_model), bu degisiklik eski
+ * karpinlerin gorunumunu etkilemez - sadece yeni acilacak vardiyalara
+ * uygulanir.
+ */
+export async function updateVehiclePaymentModel(
+  vehicleId: string,
+  input: { paymentModel: PaymentModel; percentageRate?: number | null; kmRate?: number | null }
+): Promise<void> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({
+      payment_model: input.paymentModel,
+      percentage_rate: input.paymentModel === 'percentage' ? (input.percentageRate ?? 25) : null,
+      km_rate: input.paymentModel === 'km_based' ? (input.kmRate ?? null) : null,
+    })
+    .eq('id', vehicleId);
+  if (error) throw error;
+}
+
 /** Arac sahibi, bu aracta hangi gider kategorilerinin sofore acik olacagini belirler. */
 export async function setEnabledExpenseCategories(
   vehicleId: string,
