@@ -256,14 +256,26 @@ export function ShiftHistoryList({ vehicle }: Props) {
   );
 
   async function handleConfirmOne(shift: Shift) {
+    // Anında geri bildirim icin: ag cevabini beklemeden listeyi guncelle,
+    // basarisiz olursa geri al.
+    const previousShifts = shifts;
+    const now = new Date().toISOString();
+    setShifts((prev) =>
+      prev.map((s) =>
+        s.id === shift.id
+          ? { ...s, ...(isOwner ? { owner_confirmed_received_at: now } : { driver_marked_delivered_at: now }) }
+          : s
+      )
+    );
     try {
       if (isOwner) {
         await markReceivedAndNotify([shift]);
       } else {
         await markDeliveredAndNotify([shift], profile?.full_name ?? 'Bir şoför');
       }
-      await load();
+      load().catch(() => {});
     } catch (e: any) {
+      setShifts(previousShifts);
       Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
     }
   }

@@ -48,14 +48,23 @@ export default function ShiftDetailScreen() {
 
   async function handleConfirmSettlement() {
     if (!shift) return;
+    // Anında geri bildirim icin: ag cevabini beklemeden ekrani guncelle,
+    // basarisiz olursa geri al.
+    const previousShift = shift;
+    const now = new Date().toISOString();
+    setShift({
+      ...shift,
+      ...(isOwner ? { owner_confirmed_received_at: now } : { driver_marked_delivered_at: now }),
+    });
     try {
       if (isOwner) {
         await markReceivedAndNotify([shift]);
       } else {
         await markDeliveredAndNotify([shift], profile?.full_name ?? 'Bir şoför');
       }
-      await load();
+      load().catch(() => {});
     } catch (e: any) {
+      setShift(previousShift);
       Alert.alert('İşlem başarısız', e?.message ?? 'Bilinmeyen hata oluştu.');
     }
   }
