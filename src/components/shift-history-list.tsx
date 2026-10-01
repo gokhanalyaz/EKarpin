@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
 import { expenseCategoryLabel } from '@/lib/expense-categories';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
@@ -39,6 +40,12 @@ function DetailRow({ label, value, emphasize }: { label: string; value: string; 
       </ThemedText>
     </ThemedView>
   );
+}
+
+/** Kalem gruplari arasina ince bir ayirici cizgi - karisik gorunmesin diye. */
+function Divider() {
+  const theme = useTheme();
+  return <ThemedView style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />;
 }
 
 export type SettlementInfo = {
@@ -150,6 +157,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
 
         {isPercentage ? (
           <>
+            <Divider />
             <DetailRow label="Hasılat (Tutar)" value={formatTL(s.total_amount)} />
             {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
             <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} />
@@ -170,12 +178,14 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
             {s.other_expenses_note ? (
               <DetailRow label="Masraf Notu" value={s.other_expenses_note} />
             ) : null}
+            <Divider />
             <DetailRow label="Ondalık (Şoför Payı)" value={formatTL(s.driver_share)} />
             <DetailRow label="Net Kalan" value={formatTL(s.owner_total)} emphasize />
             {hasCard && <DetailRow label="Nakit Tutar" value={formatTL(s.net_cash)} emphasize />}
           </>
         ) : (
           <>
+            <Divider />
             <DetailRow label="Toplam Km" value={s.km_total != null ? String(s.km_total) : '-'} />
             <DetailRow label="Km Borcu" value={formatTL(s.km_debt)} emphasize />
           </>
@@ -357,5 +367,6 @@ const styles = StyleSheet.create({
   },
   detailLabel: { flexShrink: 1 },
   detailValue: { flexShrink: 0, textAlign: 'right' },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.half },
   note: { marginTop: Spacing.half },
 });
