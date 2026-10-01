@@ -45,7 +45,7 @@ export function DriverHome() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="subtitle" style={styles.header}>
+      <ThemedText type="title" style={styles.header}>
         Araçlarım
       </ThemedText>
 
@@ -89,9 +89,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
-  header: { marginBottom: Spacing.three },
+  header: { textAlign: 'center', marginTop: Spacing.two, marginBottom: Spacing.five },
   loading: { marginTop: Spacing.four },
-  list: { gap: Spacing.two, paddingBottom: Spacing.four, flexGrow: 1 },
+  list: { gap: Spacing.four, paddingBottom: Spacing.four, flexGrow: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
 });

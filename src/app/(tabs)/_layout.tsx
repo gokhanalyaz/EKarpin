@@ -3,6 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { useColorScheme } from 'react-native';
 
 import { Colors, FontFamily } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 
 /** Alt menu (Zara/Netflix tarzi sade sekme cubugu): marka rengi sadece
  * butonlarda kaliyor, navigasyon tamamen monokrom - aktif sekme koyu/dolu
@@ -10,6 +11,8 @@ import { Colors, FontFamily } from '@/constants/theme';
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
+  const { profile } = useAuth();
+  const isOwner = profile?.role === 'owner';
 
   return (
     <Tabs
@@ -38,6 +41,17 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Protected guard={isOwner}>
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: 'Bildirimler',
+            tabBarIcon: ({ focused, color, size }) => (
+              <SymbolView name={focused ? 'bell.fill' : 'bell'} size={size} tintColor={color} />
+            ),
+          }}
+        />
+      </Tabs.Protected>
       <Tabs.Screen
         name="account"
         options={{

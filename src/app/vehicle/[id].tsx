@@ -14,10 +14,10 @@ import {
 
 import { PhoneInput } from '@/components/phone-input';
 import { ShiftHistoryList } from '@/components/shift-history-list';
-import { VehicleAlertList } from '@/components/vehicle-alert-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
+import { SymbolView } from 'expo-symbols';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import {
@@ -27,8 +27,7 @@ import {
   setDriverDailyKmLimit,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { getVehicle, setEnabledExpenseCategories, setExpectedRevenuePerKm, type Vehicle } from '@/lib/vehicles';
-import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '@/lib/expense-categories';
+import { getVehicle, setExpectedRevenuePerKm, type Vehicle } from '@/lib/vehicles';
 
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -113,19 +112,6 @@ export default function VehicleDetailScreen() {
     }
   }
 
-  async function handleToggleExpenseCategory(key: string) {
-    if (!vehicle) return;
-    const current = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
-    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
-    setVehicle({ ...vehicle, enabled_expense_categories: next });
-    try {
-      await setEnabledExpenseCategories(vehicle.id, next);
-    } catch (e: any) {
-      setVehicle({ ...vehicle, enabled_expense_categories: current });
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
-    }
-  }
-
   async function handleSaveRevenueRate() {
     if (!vehicle) return;
     const raw = revenueRateInput.trim();
@@ -178,47 +164,25 @@ export default function VehicleDetailScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive">
-        <ThemedText type="title" style={styles.title}>
-          {vehicle.plate_no}
-        </ThemedText>
+        <ThemedView style={styles.titleRow}>
+          <ThemedText type="title" style={styles.title}>
+            {vehicle.plate_no}
+          </ThemedText>
+          <Pressable
+            hitSlop={12}
+            onPress={() => router.push(`/vehicle-settings/${vehicle.id}`)}
+            style={({ pressed }) => pressed && styles.buttonPressed}>
+            <SymbolView name="gearshape" size={24} tintColor={theme.text} />
+          </Pressable>
+        </ThemedView>
         <ThemedText type="small" themeColor="textSecondary">
           {vehicle.payment_model === 'percentage'
             ? `Yüzdelik sistem (%${vehicle.percentage_rate ?? 25})`
             : `Km sistemi (${vehicle.km_rate ?? '-'} TL/km)`}
         </ThemedText>
 
-        <VehicleAlertList vehicleId={vehicle.id} />
-
         {vehicle.payment_model === 'percentage' && (
           <>
-            <ThemedText type="eyebrow" style={styles.sectionTitle}>
-              Gider Kategorileri
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Şoför vardiya kapatırken hangi masraf kalemlerini görsün?
-            </ThemedText>
-            <ThemedView style={styles.expenseChipRow}>
-              {EXPENSE_CATEGORIES.map((cat) => {
-                const keys = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
-                const enabled = keys.includes(cat.key);
-                return (
-                  <Pressable
-                    key={cat.key}
-                    onPress={() => handleToggleExpenseCategory(cat.key)}
-                    style={[
-                      styles.expenseChip,
-                      { borderColor: theme.backgroundSelected },
-                      enabled && styles.expenseChipOn,
-                    ]}>
-                    <ThemedText type="small" style={enabled ? styles.expenseChipTextOn : undefined}>
-                      {enabled ? '✓ ' : ''}
-                      {cat.label}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </ThemedView>
-
             <ThemedText type="eyebrow" style={styles.sectionTitle}>
               Km Karşılaştırma
             </ThemedText>
@@ -348,7 +312,8 @@ export default function VehicleDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
-  title: { fontSize: 32, lineHeight: 38 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { flex: 1 },
   sectionTitle: { marginTop: Spacing.four },
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   list: { gap: Spacing.two, marginTop: Spacing.two },
@@ -363,10 +328,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   kmLimitSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
-  expenseChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two, marginBottom: Spacing.two },
-  expenseChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999, borderWidth: 1 },
-  expenseChipOn: { backgroundColor: '#2563EB1F', borderColor: '#2563EB' },
-  expenseChipTextOn: { color: '#1D4ED8', fontFamily: FontFamily.bodyBold },
   hint: { marginBottom: Spacing.one },
   button: {
     backgroundColor: Brand.primary,
