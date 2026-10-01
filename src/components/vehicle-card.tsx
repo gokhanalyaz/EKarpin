@@ -33,7 +33,12 @@ export function VehicleCard({ vehicle, statusText, statusActive }: Props) {
           <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
         </ThemedView>
       </ThemedView>
-      <SymbolView name="car.side.fill" size={84} tintColor={Brand.primary} style={styles.carIcon} />
+      <SymbolView
+        name="car.side.fill"
+        size={84}
+        tintColor={statusActive ? '#16A34A' : Brand.primary}
+        style={styles.carIcon}
+      />
     </ThemedView>
   );
 }
