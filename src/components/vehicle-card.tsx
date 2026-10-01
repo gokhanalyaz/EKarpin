@@ -25,14 +25,15 @@ function formatOpenedTime(iso: string): string {
 }
 
 /**
- * Ana ekranlardaki (ev sahibi + sofor) arac karti: plaka gercek bir plaka
- * gibi beyaz rozette, saga yaslanmis buyuk bir arac simgesiyle birlikte
- * gosterilir - "araç görseli" istegi icin SF Symbols'un arac simgesi
- * kullanildi (yeni bir gorsel/asset pipeline'i gerektirmeden). Durum
- * basligi (acik/kapali) kalin+buyuk harf+aralikli bir "karakterle" govde
- * metninden ayristirilir; soför adi/ipucu bunun ALTINDA ayri bir satirda,
- * acilis saati ise vardiya acikken kartin sag ust kosesinde kucuk bir not
- * olarak gosterilir.
+ * Ana ekranlardaki (ev sahibi + sofor) arac karti: plaka beyaz bir
+ * rozet/kutu OLMADAN, sadece yazi karakteri olarak gosterilir; saga
+ * yaslanmis arac simgesinin hemen altinda da kucuk bir odeme modeli
+ * rozeti (% / km) yer alir - "araç görseli" istegi icin SF Symbols'un
+ * arac simgesi kullanildi (yeni bir gorsel/asset pipeline'i
+ * gerektirmeden). Durum basligi (acik/kapali) kalin+buyuk harf+aralikli
+ * bir "karakterle" govde metninden ayristirilir; soför adi/ipucu bunun
+ * ALTINDA ayri bir satirda, acilis saati ise vardiya acikken kartin sag
+ * ust kosesinde kucuk bir not olarak gosterilir.
  */
 export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, openedAt }: Props) {
   return (
@@ -45,7 +46,7 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, open
         </ThemedView>
       ) : null}
       <ThemedView style={[styles.content, styles.transparentBg]}>
-        <PaymentModelBadge vehicle={vehicle} />
+        <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
         <ThemedView style={styles.transparentBg}>
           <ThemedText
             themeColor={statusActive ? undefined : 'textSecondary'}
@@ -58,16 +59,16 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, open
             </ThemedText>
           ) : null}
         </ThemedView>
-        <ThemedView style={styles.plate}>
-          <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
-        </ThemedView>
       </ThemedView>
-      <SymbolView
-        name="car.side.fill"
-        size={84}
-        tintColor={statusActive ? '#16A34A' : Brand.primary}
-        style={styles.carIcon}
-      />
+      <ThemedView style={[styles.rightColumn, styles.transparentBg]}>
+        <SymbolView
+          name="car.side.fill"
+          size={84}
+          tintColor={statusActive ? '#16A34A' : Brand.primary}
+          style={styles.carIcon}
+        />
+        <PaymentModelBadge vehicle={vehicle} compact />
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -84,6 +85,7 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, gap: Spacing.two, alignItems: 'flex-start' },
   transparentBg: { backgroundColor: 'transparent' },
+  rightColumn: { alignItems: 'center', gap: Spacing.half },
   statusText: {
     fontFamily: FontFamily.bodyBold,
     fontSize: 13,
@@ -98,17 +100,7 @@ const styles = StyleSheet.create({
     right: Spacing.three,
   },
   openedAtText: { fontSize: 11 },
-  plate: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderWidth: 1,
-    borderColor: '#D4D4D8',
-    marginTop: Spacing.one,
-  },
   plateText: {
-    color: '#111111',
     fontFamily: FontFamily.bodyBold,
     fontSize: 20,
     letterSpacing: 1,
