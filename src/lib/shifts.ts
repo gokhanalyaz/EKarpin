@@ -110,6 +110,38 @@ export async function getAnyOpenShift(vehicleId: string): Promise<Shift | null> 
 }
 
 /** Bir önceki kapanan vardiyanın kapanış km'sini, açılışta öneri olarak kullanmak için getirir. */
+/** Bir aracin su an acik vardiyasi yoksa, ana ekran karti icin "Kapanış saati"
+ * notu olarak gosterilecek en son KAPANMIŞ vardiyayi getirir. */
+export async function getLastClosedShift(vehicleId: string): Promise<Shift | null> {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select('*')
+    .eq('vehicle_id', vehicleId)
+    .eq('status', 'closed')
+    .order('closed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Shift | null;
+}
+
+/** Yukarıdakinin şoför tarafı karşılığı: bir araçta BU şoförün en son
+ * kapattığı vardiyayı getirir (şoförün kendi ana ekran kartındaki
+ * "Kapanış saati" notu için). */
+export async function getLastClosedShiftForDriver(vehicleId: string, driverId: string): Promise<Shift | null> {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select('*')
+    .eq('vehicle_id', vehicleId)
+    .eq('driver_id', driverId)
+    .eq('status', 'closed')
+    .order('closed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Shift | null;
+}
+
 export async function getSuggestedOpeningKm(vehicleId: string): Promise<number | null> {
   const { data, error } = await supabase
     .from('shifts')

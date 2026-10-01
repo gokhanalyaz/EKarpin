@@ -17,8 +17,10 @@ type Props = {
   subLabel?: string;
   /** true ise subLabel (soför adi gibi onemli bir bilgi) koyu/siyah ve kalin yazilir; false/yoksa ipucu metni gibi soluk gri kalir. */
   subLabelBold?: boolean;
-  /** Vardiya acikken kartin kosesine kucuk bir not olarak acilis saati yazilir. */
-  openedAt?: string | null;
+  /** Kartin kosesine kucuk bir saat notu olarak yazilacak etiket: vardiya acikken "Açılış", kapaliyken (son kapanan vardiya varsa) "Kapanış". */
+  cornerTimeLabel?: string;
+  /** Yukaridaki etiketin yanina yazilacak zaman (ISO). Yoksa/null ise kose notu hic gosterilmez. */
+  cornerTimeIso?: string | null;
 };
 
 function formatOpenedTime(iso: string): string {
@@ -37,13 +39,13 @@ function formatOpenedTime(iso: string): string {
  * ALTINDA ayri bir satirda, acilis saati ise vardiya acikken kartin sag
  * ust kosesinde kucuk bir not olarak gosterilir.
  */
-export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subLabelBold, openedAt }: Props) {
+export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subLabelBold, cornerTimeLabel, cornerTimeIso }: Props) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      {statusActive && openedAt ? (
+      {cornerTimeIso ? (
         <ThemedView style={[styles.openedAtBadge, styles.transparentBg]}>
           <ThemedText type="small" style={styles.openedAtText}>
-            Açılış {formatOpenedTime(openedAt)}
+            {cornerTimeLabel} {formatOpenedTime(cornerTimeIso)}
           </ThemedText>
         </ThemedView>
       ) : null}

@@ -7,13 +7,14 @@ import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getAnyOpenShift, type Shift } from '@/lib/shifts';
+import { getAnyOpenShift, getLastClosedShiftForDriver, type Shift } from '@/lib/shifts';
 import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
   const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [openShiftByMe, setOpenShiftByMe] = useState<Record<string, Shift | null>>({});
+  type CardStatus = { shift: Shift | null; cornerLabel?: string; cornerIso?: string | null };
+  const [cardStatus, setCardStatus] = useState<Record<string, CardStatus>>({});
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
@@ -26,10 +27,19 @@ export function DriverHome() {
       const statuses = await Promise.all(
         data.map(async (v) => {
           const open = await getAnyOpenShift(v.id).catch(() => null);
-          return [v.id, open?.driver_id === profile.id ? open : null] as const;
+          const mine = open?.driver_id === profile.id ? open : null;
+          if (mine) {
+            return [v.id, { shift: mine, cornerLabel: 'Açılış', cornerIso: mine.opened_at }] as const;
+          }
+          // Vardiya kapaliysa, acilis yerine bu soforun bu aracta en son kapattigi saati gosterelim.
+          const lastClosed = await getLastClosedShiftForDriver(v.id, profile.id).catch(() => null);
+          return [
+            v.id,
+            { shift: null, cornerLabel: lastClosed ? 'Kapanış' : undefined, cornerIso: lastClosed?.closed_at ?? null },
+          ] as const;
         })
       );
-      setOpenShiftByMe(Object.fromEntries(statuses));
+      setCardStatus(Object.fromEntries(statuses));
     } catch (e) {
       console.warn('Araçlar yüklenemedi', e);
     } finally {
@@ -63,7 +73,8 @@ export function DriverHome() {
             </ThemedText>
           }
           renderItem={({ item }) => {
-            const open = openShiftByMe[item.id];
+            const st = cardStatus[item.id];
+            const open = st?.shift;
             return (
               <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
                 <VehicleCard
@@ -71,7 +82,8 @@ export function DriverHome() {
                   statusActive={!!open}
                   statusLabel={open ? 'Vardiyan Açık' : 'Vardiya Kapalı'}
                   subLabel={open ? 'Kapatmak için dokun' : 'Açmak için dokun'}
-                  openedAt={open?.opened_at}
+                  cornerTimeLabel={st?.cornerLabel}
+                  cornerTimeIso={st?.cornerIso}
                 />
               </Pressable>
             );

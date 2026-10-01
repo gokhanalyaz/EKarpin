@@ -7,11 +7,11 @@ import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getAnyOpenShift, type Shift } from '@/lib/shifts';
+import { getAnyOpenShift, getLastClosedShift, type Shift } from '@/lib/shifts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
-type StatusInfo = { open: boolean; driverName?: string; openedAt?: string };
+type StatusInfo = { open: boolean; driverName?: string; cornerLabel?: string; cornerIso?: string | null };
 
 export function OwnerHome() {
   const { profile } = useAuth();
@@ -30,10 +30,20 @@ export function OwnerHome() {
       const entries = await Promise.all(
         data.map(async (v) => {
           const open: Shift | null = await getAnyOpenShift(v.id).catch(() => null);
-          if (!open) return [v.id, { open: false }] as const;
-          const drivers = await listVehicleDrivers(v.id).catch(() => []);
-          const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
-          return [v.id, { open: true, driverName: driverName ?? undefined, openedAt: open.opened_at }] as const;
+          if (open) {
+            const drivers = await listVehicleDrivers(v.id).catch(() => []);
+            const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
+            return [
+              v.id,
+              { open: true, driverName: driverName ?? undefined, cornerLabel: 'Açılış', cornerIso: open.opened_at },
+            ] as const;
+          }
+          // Vardiya kapaliysa, acilis yerine bu aracin en son kapandigi saati not olarak gosterelim.
+          const lastClosed = await getLastClosedShift(v.id).catch(() => null);
+          return [
+            v.id,
+            { open: false, cornerLabel: lastClosed ? 'Kapanış' : undefined, cornerIso: lastClosed?.closed_at ?? null },
+          ] as const;
         })
       );
       setStatus(Object.fromEntries(entries));
@@ -79,7 +89,8 @@ export function OwnerHome() {
                   statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
                   subLabel={s?.open ? s.driverName : undefined}
                   subLabelBold
-                  openedAt={s?.open ? s.openedAt : undefined}
+                  cornerTimeLabel={s?.cornerLabel}
+                  cornerTimeIso={s?.cornerIso}
                 />
               </Pressable>
             );
