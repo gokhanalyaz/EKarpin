@@ -328,7 +328,7 @@ export default function VehicleSettingsScreen() {
         </ThemedText>
         <TextInput
           editable={!hasOpenShift}
-          style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
           placeholder={paymentModelChoice === 'percentage' ? '25' : '0.00'}
           placeholderTextColor={theme.textSecondary}
           keyboardType="decimal-pad"
@@ -388,7 +388,7 @@ export default function VehicleSettingsScreen() {
               Beklenen Km Başı Hasılat (₺/km)
             </ThemedText>
             <TextInput
-              style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+              style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
               placeholder="Yok"
               placeholderTextColor={theme.textSecondary}
               keyboardType="decimal-pad"
@@ -435,7 +435,7 @@ export default function VehicleSettingsScreen() {
                     Günlük Km Düşüm Hakkı
                   </ThemedText>
                   <TextInput
-                    style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                    style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
                     placeholder="Yok"
                     placeholderTextColor={theme.textSecondary}
                     keyboardType="number-pad"
@@ -518,12 +518,14 @@ const styles = StyleSheet.create({
   chipTextOn: { color: '#1D4ED8', fontFamily: FontFamily.bodyBold },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   smallInput: {
-    borderWidth: 1,
-    borderRadius: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    width: 70,
-    fontSize: 14,
+    borderWidth: 1.5,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    minWidth: 92,
+    fontSize: 17,
+    fontFamily: FontFamily.bodyBold,
+    textAlign: 'right',
   },
   smallSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
   list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
