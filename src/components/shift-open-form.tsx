@@ -4,7 +4,7 @@ import { Alert, Image, Pressable, StyleSheet, TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { getOwnerPushToken, sendPushNotification } from '@/lib/notifications';
@@ -175,12 +175,12 @@ const styles = StyleSheet.create({
   preview: { width: '100%', height: 200, borderRadius: Spacing.two, marginTop: Spacing.two },
   secondaryButton: { alignItems: 'center', marginTop: Spacing.two, paddingVertical: Spacing.two },
   button: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.four,
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
 });

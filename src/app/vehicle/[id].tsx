@@ -17,7 +17,7 @@ import { ShiftHistoryList } from '@/components/shift-history-list';
 import { VehicleAlertList } from '@/components/vehicle-alert-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   expenseChipTextOn: { color: '#1D4ED8', fontWeight: '700' },
   hint: { marginBottom: Spacing.one },
   button: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -378,5 +378,5 @@ const styles = StyleSheet.create({
   linkButton: { alignItems: 'center', marginTop: Spacing.three },
   addDriverButton: { alignItems: 'center', marginTop: Spacing.four, paddingVertical: Spacing.two },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
 });

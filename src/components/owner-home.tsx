@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { getAnyOpenShift, type Shift } from '@/lib/shifts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
@@ -126,11 +126,11 @@ const styles = StyleSheet.create({
   empty: { textAlign: 'center', marginTop: Spacing.five },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   addButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   addButtonPressed: { opacity: 0.7 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  addButtonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
 });

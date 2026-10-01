@@ -4,7 +4,7 @@ import { Alert, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift } from '@/lib/shifts';
 import { expenseCategoryLabel } from '@/lib/expense-categories';
@@ -327,12 +327,12 @@ export function ShiftHistoryList({ vehicle }: Props) {
 const styles = StyleSheet.create({
   list: { gap: Spacing.two },
   batchButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  batchButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  batchButtonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
   buttonPressed: { opacity: 0.7 },
   compareButton: { marginTop: Spacing.two, alignSelf: 'flex-start' },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },

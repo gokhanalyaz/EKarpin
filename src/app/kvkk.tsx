@@ -4,7 +4,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSh
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { setKvkkAccepted } from '@/lib/kvkk-consent';
 
 const SCROLL_END_THRESHOLD = 24;
@@ -151,12 +151,12 @@ const styles = StyleSheet.create({
   footer: { paddingTop: Spacing.two, paddingBottom: Spacing.four, gap: Spacing.two },
   footerHint: { textAlign: 'center' },
   approveButton: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   approveButtonDisabled: { opacity: 0.4 },
-  approveButtonText: { color: '#fff', fontWeight: '700' },
+  approveButtonText: { color: Brand.onPrimary, fontWeight: '700' },
   buttonPressed: { opacity: 0.7 },
 });

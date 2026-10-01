@@ -26,6 +26,17 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * Marka paleti: taksi sarisi + siyah. Birincil aksiyon butonlari,
+ * secili durumlar ve vurgular bu renkleri kullanir (acik/koyu tema
+ * farki yok - marka rengi sabit kalir).
+ */
+export const Brand = {
+  primary: '#FFC400',
+  primaryPressed: '#E0AC00',
+  onPrimary: '#171717',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
