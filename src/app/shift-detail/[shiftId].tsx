@@ -76,7 +76,7 @@ export default function ShiftDetailScreen() {
         {vehicle.plate_no}
       </ThemedText>
 
-      <ShiftHistoryCard shift={shift} driverName={driverName} pressable={false} />
+      <ShiftHistoryCard shift={shift} driverName={driverName} vehicle={vehicle} pressable={false} />
 
       {hasAnyPhoto ? (
         <ThemedView style={styles.photos}>

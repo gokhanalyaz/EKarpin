@@ -27,7 +27,7 @@ import {
   setDriverDailyKmLimit,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { getVehicle, setEnabledExpenseCategories, type Vehicle } from '@/lib/vehicles';
+import { getVehicle, setEnabledExpenseCategories, setExpectedRevenuePerKm, type Vehicle } from '@/lib/vehicles';
 import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '@/lib/expense-categories';
 
 export default function VehicleDetailScreen() {
@@ -42,6 +42,8 @@ export default function VehicleDetailScreen() {
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
+  const [revenueRateInput, setRevenueRateInput] = useState('');
+  const [savingRevenueRate, setSavingRevenueRate] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -53,6 +55,7 @@ export default function VehicleDetailScreen() {
       setLimitInputs(
         Object.fromEntries(d.map((row) => [row.id, row.daily_km_discount_limit != null ? String(row.daily_km_discount_limit) : '']))
       );
+      setRevenueRateInput(v.expected_revenue_per_km != null ? String(v.expected_revenue_per_km) : '');
     } catch (e) {
       console.warn('Araç detayı yüklenemedi', e);
     } finally {
@@ -120,6 +123,25 @@ export default function VehicleDetailScreen() {
     } catch (e: any) {
       setVehicle({ ...vehicle, enabled_expense_categories: current });
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
+  }
+
+  async function handleSaveRevenueRate() {
+    if (!vehicle) return;
+    const raw = revenueRateInput.trim();
+    const parsed = raw ? Number(raw.replace(',', '.')) : null;
+    if (raw && (Number.isNaN(parsed) || (parsed as number) < 0)) {
+      Alert.alert('Geçersiz değer', 'Geçerli bir TL/km değeri gir (boş bırakırsan karşılaştırma kapanır).');
+      return;
+    }
+    setSavingRevenueRate(true);
+    try {
+      await setExpectedRevenuePerKm(vehicle.id, parsed);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setSavingRevenueRate(false);
     }
   }
 
@@ -196,6 +218,36 @@ export default function VehicleDetailScreen() {
                 );
               })}
             </ThemedView>
+
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              Km Karşılaştırma
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Bu araç km başına normal şartlarda ortalama ne kadar hasılat yapar? Girersen, her
+              vardiyada kat edilen km'ye göre beklenen hasılatla gerçek hasılat karşılaştırılıp
+              kâr/zarar durumu gösterilir.
+            </ThemedText>
+            <ThemedView style={styles.kmLimitRow}>
+              <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+                Beklenen Km Başı Hasılat (₺/km)
+              </ThemedText>
+              <TextInput
+                style={[styles.kmLimitInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                placeholder="Yok"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={revenueRateInput}
+                onChangeText={setRevenueRateInput}
+              />
+              <Pressable
+                style={({ pressed }) => [styles.kmLimitSaveButton, pressed && styles.buttonPressed]}
+                onPress={handleSaveRevenueRate}
+                disabled={savingRevenueRate}>
+                <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+                  {savingRevenueRate ? '...' : 'Kaydet'}
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
           </>
         )}
 
@@ -250,7 +302,7 @@ export default function VehicleDetailScreen() {
             </ThemedText>
           </Pressable>
         </ThemedView>
-        <ShiftHistoryList vehicleId={vehicle.id} />
+        <ShiftHistoryList vehicle={vehicle} />
 
         {showAddDriver ? (
           <>

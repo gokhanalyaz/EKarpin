@@ -11,6 +11,7 @@ export type Vehicle = {
   km_rate: number | null;
   created_at: string;
   enabled_expense_categories: string[] | null;
+  expected_revenue_per_km: number | null;
 };
 
 export async function listOwnerVehicles(ownerId: string): Promise<Vehicle[]> {
@@ -75,6 +76,18 @@ export async function setEnabledExpenseCategories(
   const { error } = await supabase
     .from('vehicles')
     .update({ enabled_expense_categories: categories })
+    .eq('id', vehicleId);
+  if (error) throw error;
+}
+
+/** Arac sahibi, yuzdelik araclarda km-hasilat karsilastirmasi icin beklenen km basi hasilati girer. */
+export async function setExpectedRevenuePerKm(
+  vehicleId: string,
+  rate: number | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ expected_revenue_per_km: rate })
     .eq('id', vehicleId);
   if (error) throw error;
 }

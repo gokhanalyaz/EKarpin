@@ -107,7 +107,7 @@ export default function ShiftScreen() {
         <ThemedText type="smallBold" style={{ marginTop: Spacing.six, marginBottom: Spacing.two }}>
           Vardiya Geçmişi
         </ThemedText>
-        <ShiftHistoryList vehicleId={vehicle.id} />
+        <ShiftHistoryList vehicle={vehicle} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

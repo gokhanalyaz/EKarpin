@@ -10,9 +10,10 @@ import { formatDuration, getShiftDurationMinutes, listVehicleShifts, type Shift 
 import { expenseCategoryLabel } from '@/lib/expense-categories';
 import { getSettlementLabel, getSettlementState, markDeliveredAndNotify, markReceivedAndNotify, settlementAmount } from '@/lib/settlement';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
+import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
-  vehicleId: string;
+  vehicle: Vehicle;
 };
 
 export function formatDateTime(iso: string): string {
@@ -54,13 +55,15 @@ type CardProps = {
   shift: Shift;
   driverName?: string;
   vehiclePlate?: string;
+  /** Verilirse ve yuzdelik + km-karsilastirma orani ayarliysa "Km ile Karsilastir" butonu gosterilir. */
+  vehicle?: Vehicle;
   /** false ise karta dokununca vardiya detayina gidilmez (detay ekraninin kendisinde kullanildiginda). */
   pressable?: boolean;
   settlement?: SettlementInfo;
 };
 
 /** Kapanmis bir vardiyanin kalem kalem dokumu. Hem liste hem de tek vardiya detay ekraninda kullanilir. */
-export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable = true, settlement }: CardProps) {
+export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, pressable = true, settlement }: CardProps) {
   const minutes = getShiftDurationMinutes(s.opened_at, s.closed_at);
   const isPercentage = s.payment_model === 'percentage';
   const hasCard = (s.card_amount ?? 0) > 0;
@@ -77,6 +80,30 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
       : settlement?.state === 'awaiting_confirmation'
       ? styles.settlementAwaiting
       : styles.settlementPending;
+
+  function handleCompareKm() {
+    if (!vehicle?.expected_revenue_per_km || s.km_total == null) return;
+    const rate = vehicle.expected_revenue_per_km;
+    const expected = s.km_total * rate;
+    const actual = s.total_amount ?? 0;
+    const diff = actual - expected;
+    const pct = expected > 0 ? (diff / expected) * 100 : 0;
+    let verdict: string;
+    if (expected > 0 && diff < -expected * 0.15) {
+      verdict = 'Beklenenin belirgin altında — kayıp/eksik bildirim riski olabilir.';
+    } else if (expected > 0 && diff > expected * 0.15) {
+      verdict = 'Beklenenin üzerinde.';
+    } else {
+      verdict = 'Beklenen aralıkta, normal görünüyor.';
+    }
+    Alert.alert(
+      'Km ile Karşılaştırma',
+      `Kat edilen km: ${s.km_total}\n` +
+        `Beklenen hasılat (${rate} ₺/km): ${expected.toFixed(2)} ₺\n` +
+        `Gerçek hasılat: ${actual.toFixed(2)} ₺\n` +
+        `Fark: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)} ₺ (%${pct.toFixed(0)})\n\n${verdict}`
+    );
+  }
 
   function handleSettlementPress() {
     if (!settlement?.onConfirm) return;
@@ -155,6 +182,16 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
         )}
       </ThemedView>
 
+      {isPercentage && vehicle?.expected_revenue_per_km != null && s.km_total != null && (
+        <Pressable
+          style={({ pressed }) => [styles.compareButton, pressed && styles.buttonPressed]}
+          onPress={handleCompareKm}>
+          <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+            📊 Km ile Karşılaştır
+          </ThemedText>
+        </Pressable>
+      )}
+
       {s.notes ? (
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
           Not: {s.notes}
@@ -172,7 +209,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, pressable
   );
 }
 
-export function ShiftHistoryList({ vehicleId }: Props) {
+export function ShiftHistoryList({ vehicle }: Props) {
   const { profile } = useAuth();
   const isOwner = profile?.role === 'owner';
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -180,7 +217,7 @@ export function ShiftHistoryList({ vehicleId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
-    return Promise.all([listVehicleShifts(vehicleId), listVehicleDrivers(vehicleId)]).then(
+    return Promise.all([listVehicleShifts(vehicle.id), listVehicleDrivers(vehicle.id)]).then(
       ([shiftRows, driverRows]) => {
         setShifts(shiftRows.filter((s) => s.status === 'closed'));
         const map: Record<string, string> = {};
@@ -202,7 +239,7 @@ export function ShiftHistoryList({ vehicleId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [vehicleId]);
+  }, [vehicle.id]);
 
   // Ekran her odaklandığında (bildirime dokununca, ya da uygulamaya geri
   // dönünce) listeyi sessizce (loading gösterip yanıp sönmeden) tazele ki
@@ -210,7 +247,7 @@ export function ShiftHistoryList({ vehicleId }: Props) {
   useFocusEffect(
     useCallback(() => {
       load().catch(() => {});
-    }, [vehicleId])
+    }, [vehicle.id])
   );
 
   const pendingCount = useMemo(
@@ -257,6 +294,7 @@ export function ShiftHistoryList({ vehicleId }: Props) {
             key={s.id}
             shift={s}
             driverName={driverNames[s.driver_id]}
+            vehicle={vehicle}
             settlement={{
               state,
               label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
@@ -284,6 +322,7 @@ const styles = StyleSheet.create({
   },
   batchButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   buttonPressed: { opacity: 0.7 },
+  compareButton: { marginTop: Spacing.two, alignSelf: 'flex-start' },
   card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   cardPending: { borderWidth: 1.5, borderColor: '#F59E0B', backgroundColor: '#F59E0B14' },
   cardAwaiting: { borderWidth: 2, borderColor: '#2563EB', backgroundColor: '#2563EB1F' },

@@ -101,6 +101,14 @@ export default function HistoryScreen() {
     return map;
   }, [vehicles]);
 
+  const vehicleById = useMemo(() => {
+    const map: Record<string, Vehicle> = {};
+    vehicles.forEach((v) => {
+      map[v.id] = v;
+    });
+    return map;
+  }, [vehicles]);
+
   const kmDiscountSummary = useMemo(() => {
     const byDriver = new Map<string, number>();
     let total = 0;
@@ -305,6 +313,7 @@ export default function HistoryScreen() {
                 shift={s}
                 driverName={driverNameById[s.driver_id]}
                 vehiclePlate={!selectedVehicleId ? vehiclePlateById[s.vehicle_id] : undefined}
+                vehicle={vehicleById[s.vehicle_id]}
                 settlement={settlement}
               />
             );
