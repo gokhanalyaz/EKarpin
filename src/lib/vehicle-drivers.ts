@@ -71,3 +71,26 @@ export async function unassignDriver(vehicleDriverRowId: string): Promise<void> 
   const { error } = await supabase.from('vehicle_drivers').delete().eq('id', vehicleDriverRowId);
   if (error) throw error;
 }
+
+/**
+ * Soforu araçtan kaldirir (vehicle_drivers satirini siler). deleteShifts=true
+ * verilirse, o soforun bu araçla ilgili TUM karpinleri (shifts) de silinir;
+ * false/omit ise karpinler oldugu gibi kalir (gecmis veriler korunur).
+ */
+export async function removeDriverFromVehicle(
+  vehicleDriverRowId: string,
+  options: { vehicleId: string; driverId: string; deleteShifts: boolean }
+): Promise<void> {
+  if (options.deleteShifts) {
+    const { error: shiftsError } = await supabase
+      .from('shifts')
+      .delete()
+      .eq('vehicle_id', options.vehicleId)
+      .eq('driver_id', options.driverId);
+    if (shiftsError) throw shiftsError;
+  }
+
+  const { error } = await supabase.from('vehicle_drivers').delete().eq('id', vehicleDriverRowId);
+  if (error) throw error;
+}
+

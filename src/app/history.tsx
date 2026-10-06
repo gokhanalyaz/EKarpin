@@ -1,7 +1,9 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ShiftHistoryCard, type SettlementInfo } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -34,6 +36,15 @@ function presetToRange(preset: DatePreset): { from?: string; to?: string } {
   return { from: from.toISOString(), to: now.toISOString() };
 }
 
+/** Belirli bir günün (yerel saatle 00:00 - 23:59:59) ISO aralığını döner. */
+function dayToRange(day: Date): { from: string; to: string } {
+  const from = new Date(day);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(day);
+  to.setHours(23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 const PRESET_LABELS: Record<DatePreset, string> = {
   today: 'Bugün',
   week: 'Son 7 Gün',
@@ -41,16 +52,35 @@ const PRESET_LABELS: Record<DatePreset, string> = {
   all: 'Tüm Zamanlar',
 };
 
+const DAY_PICKER_COUNT = 21;
+
+function recentDays(count: number): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    return d;
+  });
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
 export default function HistoryScreen() {
   const { vehicleId: initialVehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const { profile } = useAuth();
   const isOwner = profile?.role === 'owner';
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(initialVehicleId ?? null);
   const [drivers, setDrivers] = useState<VehicleDriverRow[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [preset, setPreset] = useState<DatePreset>('all');
+  const [specificDay, setSpecificDay] = useState<Date | null>(null);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +88,14 @@ export default function HistoryScreen() {
 
   type SettlementFilter = 'all' | 'pending' | 'done';
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
+
+  // Ekran odaklandığında (örn. araç detayından "Filtrele" ile tekrar girince)
+  // en üste sar - önceki ziyaretten kalma kaydırma konumunda takılı kalmasın.
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   useEffect(() => {
     if (!profile) return;
@@ -128,7 +166,7 @@ export default function HistoryScreen() {
     if (!profile) return;
     setLoading(true);
     try {
-      const { from, to } = presetToRange(preset);
+      const { from, to } = specificDay ? dayToRange(specificDay) : presetToRange(preset);
       const result = await queryShifts({
         vehicleIds: selectedVehicleId ? [selectedVehicleId] : vehicles.map((v) => v.id),
         driverId: isOwner ? selectedDriverId ?? undefined : profile.id,
@@ -141,7 +179,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, vehicles]);
+  }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, specificDay, vehicles]);
 
   const settlementTotals = useMemo(() => {
     let pendingTotal = 0;
@@ -185,142 +223,184 @@ export default function HistoryScreen() {
     load();
   }, [vehiclesLoading, load]);
 
+  const days = useMemo(() => recentDays(DAY_PICKER_COUNT), []);
+
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <ThemedText type="title" style={styles.title}>
-        Karpin Geçmişi
-      </ThemedText>
+    <ThemedView style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled">
+        <ThemedText type="title" style={styles.title}>
+          Karpin Geçmişi
+        </ThemedText>
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Araç
-      </ThemedText>
-      <ThemedView style={styles.chipRow}>
-        <Chip label="Tüm Araçlar" active={selectedVehicleId === null} onPress={() => setSelectedVehicleId(null)} />
-        {vehicles.map((v) => (
-          <Chip
-            key={v.id}
-            label={v.plate_no}
-            active={selectedVehicleId === v.id}
-            onPress={() => setSelectedVehicleId(v.id)}
-          />
-        ))}
-      </ThemedView>
-
-      {isOwner && (
-        <>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Şoför
-          </ThemedText>
-          <ThemedView style={styles.chipRow}>
+        <ThemedText type="smallBold" style={styles.sectionTitle}>
+          Araç
+        </ThemedText>
+        <ThemedView style={styles.chipRow}>
+          <Chip label="Tüm Araçlar" active={selectedVehicleId === null} onPress={() => setSelectedVehicleId(null)} />
+          {vehicles.map((v) => (
             <Chip
-              label="Tüm Şoförler"
-              active={selectedDriverId === null}
-              onPress={() => setSelectedDriverId(null)}
+              key={v.id}
+              label={v.plate_no}
+              active={selectedVehicleId === v.id}
+              onPress={() => setSelectedVehicleId(v.id)}
             />
-            {drivers.map((d) => (
-              <Chip
-                key={d.driver_id}
-                label={d.driver?.full_name ?? 'İsimsiz'}
-                active={selectedDriverId === d.driver_id}
-                onPress={() => setSelectedDriverId(d.driver_id)}
-              />
-            ))}
-          </ThemedView>
-        </>
-      )}
-
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Tarih Aralığı
-      </ThemedText>
-      <ThemedView style={styles.chipRow}>
-        {(Object.keys(PRESET_LABELS) as DatePreset[]).map((p) => (
-          <Chip key={p} label={PRESET_LABELS[p]} active={preset === p} onPress={() => setPreset(p)} />
-        ))}
-      </ThemedView>
-
-      {isOwner && kmDiscountSummary.total > 0 && (
-        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
-          <ThemedText type="smallBold">Km Düşümü Özeti (bu filtre için)</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Toplam düşülen: {kmDiscountSummary.total} km
-          </ThemedText>
-          {kmDiscountSummary.rows.map((row) => (
-            <ThemedText key={row.driverId} type="small" themeColor="textSecondary">
-              {row.name}: {row.kmSum} km
-            </ThemedText>
           ))}
         </ThemedView>
-      )}
 
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Teslim Durumu
-      </ThemedText>
-      <ThemedView style={styles.chipRow}>
-        <Chip label="Tümü" active={settlementFilter === 'all'} onPress={() => setSettlementFilter('all')} />
-        <Chip
-          label={isOwner ? 'Teslim Alınmayan' : 'Teslim Etmediğim'}
-          active={settlementFilter === 'pending'}
-          onPress={() => setSettlementFilter('pending')}
-        />
-        <Chip
-          label={isOwner ? 'Teslim Alınan' : 'Teslim Ettiğim'}
-          active={settlementFilter === 'done'}
-          onPress={() => setSettlementFilter('done')}
-        />
-      </ThemedView>
-
-      {!loading && shifts.length > 0 && (
-        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {settlementTotals.pendingCount} karpin ·{' '}
-            {settlementTotals.pendingTotal.toFixed(2)} ₺
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {isOwner ? 'Teslim alınan' : 'Teslim ettiğim'}: {settlementTotals.doneCount} karpin ·{' '}
-            {settlementTotals.doneTotal.toFixed(2)} ₺
-          </ThemedText>
-        </ThemedView>
-      )}
-
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
-      </ThemedText>
-      {loading ? (
-        <ActivityIndicator style={styles.loading} />
-      ) : visibleShifts.length === 0 ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          Bu filtrelere uyan kapanmış vardiya yok.
-        </ThemedText>
-      ) : (
-        <ThemedView style={styles.list}>
-          {visibleShifts.map((s) => {
-            const state = getSettlementState(s);
-            const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
-            const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
-            const settlement: SettlementInfo = {
-              state,
-              label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
-              onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
-              confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
-              confirmMessage: isOwner
-                ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
-                : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
-              confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
-            };
-            return (
-              <ShiftHistoryCard
-                key={s.id}
-                shift={s}
-                driverName={driverNameById[s.driver_id]}
-                vehiclePlate={!selectedVehicleId ? vehiclePlateById[s.vehicle_id] : undefined}
-                vehicle={vehicleById[s.vehicle_id]}
-                settlement={settlement}
+        {isOwner && (
+          <>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              Şoför
+            </ThemedText>
+            <ThemedView style={styles.chipRow}>
+              <Chip
+                label="Tüm Şoförler"
+                active={selectedDriverId === null}
+                onPress={() => setSelectedDriverId(null)}
               />
-            );
-          })}
+              {drivers.map((d) => (
+                <Chip
+                  key={d.driver_id}
+                  label={d.driver?.full_name ?? 'İsimsiz'}
+                  active={selectedDriverId === d.driver_id}
+                  onPress={() => setSelectedDriverId(d.driver_id)}
+                />
+              ))}
+            </ThemedView>
+          </>
+        )}
+
+        <ThemedText type="smallBold" style={styles.sectionTitle}>
+          Tarih Aralığı
+        </ThemedText>
+        <ThemedView style={styles.chipRow}>
+          {(Object.keys(PRESET_LABELS) as DatePreset[]).map((p) => (
+            <Chip
+              key={p}
+              label={PRESET_LABELS[p]}
+              active={!specificDay && preset === p}
+              onPress={() => {
+                setSpecificDay(null);
+                setPreset(p);
+              }}
+            />
+          ))}
         </ThemedView>
-      )}
-    </ScrollView>
+
+        <ThemedView style={[styles.sectionTitle, styles.historyHeaderRow]}>
+          <ThemedText type="smallBold">Belirli Gün</ThemedText>
+          {specificDay && (
+            <Pressable onPress={() => setSpecificDay(null)}>
+              <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+                Temizle
+              </ThemedText>
+            </Pressable>
+          )}
+        </ThemedView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
+          {days.map((d) => (
+            <Chip
+              key={d.toISOString()}
+              label={
+                isSameDay(d, days[0])
+                  ? 'Bugün'
+                  : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
+              }
+              active={!!specificDay && isSameDay(d, specificDay)}
+              onPress={() => setSpecificDay(d)}
+            />
+          ))}
+        </ScrollView>
+
+        {isOwner && kmDiscountSummary.total > 0 && (
+          <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
+            <ThemedText type="smallBold">Km Düşümü</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Toplam düşülen: {kmDiscountSummary.total} km
+            </ThemedText>
+            {kmDiscountSummary.rows.map((row) => (
+              <ThemedText key={row.driverId} type="small" themeColor="textSecondary">
+                {row.name}: {row.kmSum} km
+              </ThemedText>
+            ))}
+          </ThemedView>
+        )}
+
+        <ThemedText type="smallBold" style={styles.sectionTitle}>
+          Teslim Durumu
+        </ThemedText>
+        <ThemedView style={styles.chipRow}>
+          <Chip label="Tümü" active={settlementFilter === 'all'} onPress={() => setSettlementFilter('all')} />
+          <Chip
+            label={isOwner ? 'Teslim Alınmayan' : 'Teslim Etmediğim'}
+            active={settlementFilter === 'pending'}
+            onPress={() => setSettlementFilter('pending')}
+          />
+          <Chip
+            label={isOwner ? 'Teslim Alınan' : 'Teslim Ettiğim'}
+            active={settlementFilter === 'done'}
+            onPress={() => setSettlementFilter('done')}
+          />
+        </ThemedView>
+
+        {!loading && shifts.length > 0 && (
+          <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {isOwner ? 'Teslim alınmayan' : 'Teslim etmediğim'}: {settlementTotals.pendingCount} karpin ·{' '}
+              {settlementTotals.pendingTotal.toFixed(2)} ₺
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {isOwner ? 'Teslim alınan' : 'Teslim ettiğim'}: {settlementTotals.doneCount} karpin ·{' '}
+              {settlementTotals.doneTotal.toFixed(2)} ₺
+            </ThemedText>
+          </ThemedView>
+        )}
+
+        <ThemedText type="smallBold" style={styles.sectionTitle}>
+          Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
+        </ThemedText>
+        {loading ? (
+          <ActivityIndicator style={styles.loading} />
+        ) : visibleShifts.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            Bu filtrelere uyan kapanmış vardiya yok.
+          </ThemedText>
+        ) : (
+          <ThemedView style={styles.list}>
+            {visibleShifts.map((s) => {
+              const state = getSettlementState(s);
+              const canAct = isOwner ? state !== 'confirmed' : state === 'pending';
+              const numLabel = s.shift_no != null ? `#${s.shift_no} numaralı karpini` : 'bu karpini';
+              const settlement: SettlementInfo = {
+                state,
+                label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
+                onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
+                confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+                confirmMessage: isOwner
+                  ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
+                  : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+                confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
+              };
+              return (
+                <ShiftHistoryCard
+                  key={s.id}
+                  shift={s}
+                  driverName={driverNameById[s.driver_id]}
+                  vehiclePlate={!selectedVehicleId ? vehiclePlateById[s.vehicle_id] : undefined}
+                  vehicle={vehicleById[s.vehicle_id]}
+                  settlement={settlement}
+                />
+              );
+            })}
+          </ThemedView>
+        )}
+      </ScrollView>
+      {isOwner && <BottomTabBar current="history" />}
+    </ThemedView>
   );
 }
 
@@ -335,10 +415,13 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   container: { padding: Spacing.four, gap: Spacing.two, paddingBottom: Spacing.six },
   title: { marginBottom: Spacing.two },
   sectionTitle: { marginTop: Spacing.three },
+  historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  dayRow: { flexDirection: 'row', gap: Spacing.two, paddingVertical: Spacing.half },
   chip: {
     borderWidth: 1,
     borderColor: '#94A3B8',

@@ -1,7 +1,9 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
@@ -14,6 +16,7 @@ type StatusInfo = { open: boolean; driverName?: string };
 
 export function OwnerHome() {
   const { profile, signOut } = useAuth();
+  const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [status, setStatus] = useState<Record<string, StatusInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -51,17 +54,14 @@ export function OwnerHome() {
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={styles.root}>
+      <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.four }]}>
       <ThemedView style={styles.header}>
         <ThemedText type="subtitle">Araçlarım</ThemedText>
         <Pressable onPress={signOut}>
           <ThemedText type="linkPrimary">Çıkış</ThemedText>
         </Pressable>
       </ThemedView>
-
-      <Pressable style={styles.historyLink} onPress={() => router.push('/history')}>
-        <ThemedText type="linkPrimary">📋 Tüm Karpinleri Filtrele</ThemedText>
-      </Pressable>
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
@@ -103,15 +103,17 @@ export function OwnerHome() {
         onPress={() => router.push('/add-vehicle')}>
         <ThemedText style={styles.addButtonText}>+ Araç Ekle</ThemedText>
       </Pressable>
+      </ThemedView>
+      <BottomTabBar current="home" />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   container: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
   header: {

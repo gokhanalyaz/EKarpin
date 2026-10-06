@@ -24,6 +24,7 @@ import {
   assignDriver,
   findDriverByPhone,
   listVehicleDrivers,
+  removeDriverFromVehicle,
   setDriverDailyKmLimit,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
@@ -164,6 +165,37 @@ export default function VehicleDetailScreen() {
     }
   }
 
+  function handleDeleteDriver(row: VehicleDriverRow) {
+    const name = row.driver?.full_name ?? 'Bu şoför';
+    Alert.alert('Şoförü Sil', `${name} bu araçtan kaldırılacak. Devam edilsin mi?`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Devam Et',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            'Karpinler Ne Olsun?',
+            `${name} adlı şoförün bu araçla ilgili tüm karpinleri de silinsin mi? Bu işlem geri alınamaz.`,
+            [
+              { text: 'Hayır, Karpinler Kalsın', onPress: () => performDeleteDriver(row, false) },
+              { text: 'Evet, Karpinleri de Sil', style: 'destructive', onPress: () => performDeleteDriver(row, true) },
+            ]
+          );
+        },
+      },
+    ]);
+  }
+
+  async function performDeleteDriver(row: VehicleDriverRow, deleteShifts: boolean) {
+    if (!id) return;
+    try {
+      await removeDriverFromVehicle(row.id, { vehicleId: id, driverId: row.driver_id, deleteShifts });
+      await load();
+    } catch (e: any) {
+      Alert.alert('Silinemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
+  }
+
   if (loading || !vehicle) {
     return (
       <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -262,10 +294,19 @@ export default function VehicleDetailScreen() {
           <ThemedView style={styles.list}>
             {drivers.map((item) => (
               <ThemedView key={item.id} type="backgroundElement" style={styles.driverCard}>
-                <ThemedText type="smallBold">{item.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.driver?.phone ? `+${item.driver.phone}` : '-'}
-                </ThemedText>
+                <ThemedView style={styles.driverCardHeader}>
+                  <ThemedView>
+                    <ThemedText type="smallBold">{item.driver?.full_name ?? 'İsimsiz'}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {item.driver?.phone ? `+${item.driver.phone}` : '-'}
+                    </ThemedText>
+                  </ThemedView>
+                  <Pressable onPress={() => handleDeleteDriver(item)}>
+                    <ThemedText type="small" style={styles.deleteDriverText}>
+                      Şoförü Sil
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
                 {vehicle.payment_model === 'km_based' && (
                   <ThemedView style={styles.kmLimitRow}>
                     <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
@@ -353,6 +394,8 @@ const styles = StyleSheet.create({
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   list: { gap: Spacing.two, marginTop: Spacing.two },
   driverCard: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
+  driverCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  deleteDriverText: { color: '#DC2626', fontWeight: '700' },
   kmLimitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
   kmLimitInput: {
     borderWidth: 1,
