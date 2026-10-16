@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '@/components/bottom-tab-bar';
+import { DateRangePicker, type DateRange } from '@/components/date-range-picker';
 import { ShiftHistoryCard, type SettlementInfo } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -36,11 +37,11 @@ function presetToRange(preset: DatePreset): { from?: string; to?: string } {
   return { from: from.toISOString(), to: now.toISOString() };
 }
 
-/** Belirli bir günün (yerel saatle 00:00 - 23:59:59) ISO aralığını döner. */
-function dayToRange(day: Date): { from: string; to: string } {
-  const from = new Date(day);
+/** Ozel olarak secilen tarih araligini (yerel saatle gun basi - gun sonu) ISO araligina cevirir. */
+function rangeToIso(range: DateRange): { from: string; to: string } {
+  const from = new Date(range.from);
   from.setHours(0, 0, 0, 0);
-  const to = new Date(day);
+  const to = new Date(range.to);
   to.setHours(23, 59, 59, 999);
   return { from: from.toISOString(), to: to.toISOString() };
 }
@@ -51,22 +52,6 @@ const PRESET_LABELS: Record<DatePreset, string> = {
   month: 'Son 30 Gün',
   all: 'Tüm Zamanlar',
 };
-
-const DAY_PICKER_COUNT = 21;
-
-function recentDays(count: number): Date[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    return d;
-  });
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
 
 export default function HistoryScreen() {
   const { vehicleId: initialVehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
@@ -80,7 +65,8 @@ export default function HistoryScreen() {
   const [drivers, setDrivers] = useState<VehicleDriverRow[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [preset, setPreset] = useState<DatePreset>('all');
-  const [specificDay, setSpecificDay] = useState<Date | null>(null);
+  const [customRange, setCustomRange] = useState<DateRange | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,7 +152,7 @@ export default function HistoryScreen() {
     if (!profile) return;
     setLoading(true);
     try {
-      const { from, to } = specificDay ? dayToRange(specificDay) : presetToRange(preset);
+      const { from, to } = customRange ? rangeToIso(customRange) : presetToRange(preset);
       const result = await queryShifts({
         vehicleIds: selectedVehicleId ? [selectedVehicleId] : vehicles.map((v) => v.id),
         driverId: isOwner ? selectedDriverId ?? undefined : profile.id,
@@ -179,7 +165,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, specificDay, vehicles]);
+  }, [profile, isOwner, selectedVehicleId, selectedDriverId, preset, customRange, vehicles]);
 
   const settlementTotals = useMemo(() => {
     let pendingTotal = 0;
@@ -222,8 +208,6 @@ export default function HistoryScreen() {
     if (vehiclesLoading) return;
     load();
   }, [vehiclesLoading, load]);
-
-  const days = useMemo(() => recentDays(DAY_PICKER_COUNT), []);
 
   return (
     <ThemedView style={{ flex: 1, paddingTop: insets.top }}>
@@ -282,39 +266,35 @@ export default function HistoryScreen() {
             <Chip
               key={p}
               label={PRESET_LABELS[p]}
-              active={!specificDay && preset === p}
+              active={!customRange && preset === p}
               onPress={() => {
-                setSpecificDay(null);
+                setCustomRange(null);
+                setShowCalendar(false);
                 setPreset(p);
               }}
             />
           ))}
+          <Chip
+            label={
+              customRange
+                ? customRange.from.getTime() === customRange.to.getTime()
+                  ? customRange.from.toLocaleDateString('tr-TR')
+                  : `${customRange.from.toLocaleDateString('tr-TR')} - ${customRange.to.toLocaleDateString('tr-TR')}`
+                : 'Özel Tarih Seç'
+            }
+            active={!!customRange || showCalendar}
+            onPress={() => setShowCalendar((v) => !v)}
+          />
         </ThemedView>
-
-        <ThemedView style={[styles.sectionTitle, styles.historyHeaderRow]}>
-          <ThemedText type="smallBold">Belirli Gün</ThemedText>
-          {specificDay && (
-            <Pressable onPress={() => setSpecificDay(null)}>
-              <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
-                Temizle
-              </ThemedText>
-            </Pressable>
-          )}
-        </ThemedView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
-          {days.map((d) => (
-            <Chip
-              key={d.toISOString()}
-              label={
-                isSameDay(d, days[0])
-                  ? 'Bugün'
-                  : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
-              }
-              active={!!specificDay && isSameDay(d, specificDay)}
-              onPress={() => setSpecificDay(d)}
-            />
-          ))}
-        </ScrollView>
+        {showCalendar && (
+          <DateRangePicker
+            value={customRange}
+            onChange={(range) => {
+              setCustomRange(range);
+              setShowCalendar(false);
+            }}
+          />
+        )}
 
         {isOwner && kmDiscountSummary.total > 0 && (
           <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
@@ -421,7 +401,6 @@ const styles = StyleSheet.create({
   sectionTitle: { marginTop: Spacing.three },
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  dayRow: { flexDirection: 'row', gap: Spacing.two, paddingVertical: Spacing.half },
   chip: {
     borderWidth: 1,
     borderColor: '#94A3B8',
