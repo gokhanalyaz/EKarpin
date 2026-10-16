@@ -7,8 +7,8 @@ import { useAuth } from '@/contexts/auth-context';
 
 /** Alt menu (Zara/Netflix tarzi sade sekme cubugu): marka rengi sadece
  * butonlarda kaliyor, navigasyon tamamen monokrom - aktif sekme koyu/dolu
- * ikon, pasif sekme gri/bos ikonla ayirt ediliyor. Şoförler/Bakım/Bildirimler
- * sadece araç sahibine (owner) gösteriliyor. */
+ * ikon, pasif sekme gri/bos ikonla ayirt ediliyor. Bakım/Bildirimler sadece araç sahibine (owner) gösteriliyor; Şoförler artık
+ * ayrı bir sekme değil, Hesabım sekmesinin içinde (araç bazlı şoför yönetimi). */
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
@@ -33,21 +33,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Protected guard={isOwner}>
-        <Tabs.Screen
-          name="drivers"
-          options={{
-            title: 'Şoförler',
-            tabBarIcon: ({ focused, color, size }) => (
-              <SymbolView
-                name={focused ? 'person.2.fill' : 'person.2'}
-                size={size}
-                tintColor={color}
-              />
-            ),
-          }}
-        />
-      </Tabs.Protected>
       <Tabs.Screen
         name="history"
         options={{

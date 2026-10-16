@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet } from 'react-native';
 
+import { DateTimeRangePicker, type DateTimeRange } from '@/components/date-time-range-picker';
 import { PhotoViewButton } from '@/components/photo-view-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -300,6 +301,8 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
   const [driverVisibilityDays, setDriverVisibilityDays] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<DatePreset>('all');
+  const [customRange, setCustomRange] = useState<DateTimeRange | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [settlementFilter, setSettlementFilter] = useState<'all' | 'pending' | 'done'>('all');
 
   const load = () => {
@@ -340,7 +343,9 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
   );
 
   const visibleShifts = useMemo(() => {
-    const { from, to } = presetToRange(preset);
+    const { from, to } = customRange
+      ? { from: customRange.from.toISOString(), to: customRange.to.toISOString() }
+      : presetToRange(preset);
     return shifts.filter((s) => {
       if (from && s.opened_at < from) return false;
       if (to && s.opened_at > to) return false;
@@ -353,7 +358,7 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
       const state = getSettlementState(s);
       return settlementFilter === 'done' ? state === 'confirmed' : state !== 'confirmed';
     });
-  }, [shifts, preset, settlementFilter, isOwner, driverVisibilityDays]);
+  }, [shifts, preset, customRange, settlementFilter, isOwner, driverVisibilityDays]);
 
   const settlementTotals = useMemo(() => {
     let pendingTotal = 0;
@@ -413,9 +418,36 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
         <>
           <ThemedView style={[styles.filterChipRow, styles.transparentBg]}>
             {(Object.keys(PRESET_LABELS) as DatePreset[]).map((p) => (
-              <FilterChip key={p} label={PRESET_LABELS[p]} active={preset === p} onPress={() => setPreset(p)} />
+              <FilterChip
+                key={p}
+                label={PRESET_LABELS[p]}
+                active={!customRange && preset === p}
+                onPress={() => {
+                  setCustomRange(null);
+                  setShowCalendar(false);
+                  setPreset(p);
+                }}
+              />
             ))}
+            <FilterChip
+              label={
+                customRange
+                  ? `${customRange.from.toLocaleDateString('tr-TR')} ${String(customRange.from.getHours()).padStart(2, '0')}:${String(customRange.from.getMinutes()).padStart(2, '0')} - ${customRange.to.toLocaleDateString('tr-TR')} ${String(customRange.to.getHours()).padStart(2, '0')}:${String(customRange.to.getMinutes()).padStart(2, '0')}`
+                  : 'Özel Tarih Seç'
+              }
+              active={!!customRange || showCalendar}
+              onPress={() => setShowCalendar((v) => !v)}
+            />
           </ThemedView>
+          {showCalendar && (
+            <DateTimeRangePicker
+              value={customRange}
+              onChange={(range) => {
+                setCustomRange(range);
+                setShowCalendar(false);
+              }}
+            />
+          )}
           <ThemedView style={[styles.filterChipRow, styles.transparentBg]}>
             <FilterChip label="Tümü" active={settlementFilter === 'all'} onPress={() => setSettlementFilter('all')} />
             <FilterChip
