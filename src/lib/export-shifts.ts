@@ -1,5 +1,5 @@
 import { File, Paths } from 'expo-file-system';
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
+import * as Print from 'expo-print';
 import { Alert, Platform, Share } from 'react-native';
 import * as XLSX from 'xlsx';
 
@@ -9,10 +9,20 @@ import type { Vehicle } from '@/lib/vehicles';
 /**
  * Araç detay sayfasında (tarih filtresi uygulandıktan sonra) listelenen
  * karpinleri Excel (.xlsx) veya PDF olarak telefona kaydedilebilir hale
- * getirir. İkisi de saf JS kütüphaneler (xlsx + pdf-lib) kullanıyor, yani
- * yeni bir native build gerektirmiyor - eas update ile yayınlanabilir.
+ * getirir.
  *
- * Paylaşım için expo-sharing EKLENMEDİ (o yeni bir native build ister).
+ * Excel: xlsx (SheetJS) - saf JS, native build gerektirmez.
+ * PDF: ÖNCE pdf-lib (saf JS) ile deneniyordu, ama cihazda test edildiğinde
+ * harflerin (özellikle rakamların) rastgele kaybolduğu görüldü - hem özel
+ * font gömülü hem de pdf-lib'in standart fontuyla aynı sorun çıktı, yani
+ * sorun pdf-lib'in kendisindeydi (Hermes/RN ile uyumsuzluk). Bu yüzden PDF
+ * artık expo-print ile, normal bir HTML tablosu Apple'ın kendi WebKit PDF
+ * motoruyla PDF'e çevrilerek üretiliyor - font/karakter sorunu olmuyor,
+ * Türkçe karakterler sorunsuz basılıyor. Bunun bedeli: expo-print yeni bir
+ * native modül olduğu için YENİ BİR NATIVE BUILD (eas build) gerektiriyor,
+ * sade bir eas update yetmiyor.
+ *
+ * Paylaşım için expo-sharing EKLENMEDİ (o da ayrıca native build ister).
  * Bunun yerine, zaten uygulamada kullanılan react-native'in çekirdek
  * Share API'si ile iOS'un sistem paylaşım sayfası (UIActivityViewController)
  * açılıyor - oradan "Dosyalara Kaydet", AirDrop, Mail vs. seçilebiliyor.
@@ -229,18 +239,9 @@ export async function exportShiftsToExcel(
 // PDF
 // ---------------------------------------------------------------------------
 
-// Türkçe'ye özgü (standart PDF fontlarının WinAnsi/Latin-1 kodlamasında
-// olmayan) karakterler için ASCII karşılığına düşürüyoruz. Daha önce bunun
-// yerine özel bir font (Inter) gömülüyordu, ama cihazda font gömme bazı
-// harflerin (özellikle rakamların) tamamen kaybolmasına yol açtı - bu
-// yüzden güvenilirlik için PDF her zaman standart fontla, aksansız ama
-// EKSİKSİZ ve okunaklı üretiliyor.
-const TURKISH_FOLD: Record<string, string> = {
-  ş: 's', Ş: 'S', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ü: 'u', Ü: 'U', ç: 'c', Ç: 'C',
-};
-function foldTurkish(s: string): string {
-  return s.replace(/[şŞğĞıİöÖüÜçÇ]/g, (ch) => TURKISH_FOLD[ch] ?? ch);
-}
+// expo-print HTML'i WebKit'in kendi PDF motoruyla render ettiği için
+// Türkçe karakterler normal UTF-8 metin olarak basılıyor - pdf-lib'de
+// olduğu gibi aksansız karaktere düşürmeye (ASCII fold) artık gerek yok.
 
 type PdfColumn = { header: string; weight: number; align: 'left' | 'right' };
 
@@ -292,6 +293,77 @@ function pdfRowValues(r: ExportRow): string[] {
   ];
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildPdfHtml(
+  vehicle: Vehicle,
+  rangeLabel: string,
+  rows: ExportRow[],
+  totals: ReturnType<typeof computeTotals>
+): string {
+  const totalWeight = PDF_COLUMNS.reduce((sum, c) => sum + c.weight, 0);
+  const colgroup = PDF_COLUMNS.map(
+    (c) => `<col style="width:${((c.weight / totalWeight) * 100).toFixed(2)}%">`
+  ).join('');
+  const theadCells = PDF_COLUMNS.map(
+    (c) => `<th style="text-align:${c.align}">${escapeHtml(c.header)}</th>`
+  ).join('');
+
+  const bodyRows = rows
+    .map((r) => {
+      const cells = pdfRowValues(r)
+        .map((v, i) => `<td style="text-align:${PDF_COLUMNS[i].align}">${escapeHtml(v)}</td>`)
+        .join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+
+  const totalsValues = [
+    'TOPLAM', '', '', '', '', '', '', '', '',
+    money(totals.revenue), money(totals.card), money(totals.fuel), money(totals.expenseAmount),
+    money(totals.driverShare), money(totals.ownerNet), money(totals.cash), money(totals.kmDebt), '',
+  ];
+  const totalsCells = totalsValues
+    .map((v, i) => `<td style="text-align:${PDF_COLUMNS[i].align}">${escapeHtml(v)}</td>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @page { size: A4 landscape; margin: 10mm 8mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #1a1a1a; margin: 0; }
+  h1 { font-size: 15px; margin: 0 0 2px 0; }
+  .meta { font-size: 9px; color: #666; margin: 0 0 8px 0; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { font-size: 7.5px; padding: 3px 3px; border-bottom: 0.5px solid #ddd; word-break: break-word; white-space: normal; }
+  th { background: #FFC400; color: #1a1a1a; font-weight: 700; border-bottom: none; }
+  tfoot td { font-weight: 700; border-top: 1px solid #1a1a1a; border-bottom: none; }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(`${vehicle.plate_no} - ${rangeLabel}`)}</h1>
+  <p class="meta">${escapeHtml(
+    `Oluşturulma: ${formatDateTimeLocal(new Date().toISOString())} · ${rows.length} karpin`
+  )}</p>
+  <table>
+    <colgroup>${colgroup}</colgroup>
+    <thead><tr>${theadCells}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+    <tfoot><tr>${totalsCells}</tr></tfoot>
+  </table>
+</body>
+</html>`;
+}
+
 export async function exportShiftsToPdf(
   vehicle: Vehicle,
   shifts: Shift[],
@@ -305,126 +377,26 @@ export async function exportShiftsToPdf(
 
   const rows = buildExportRows(shifts, driverNames);
   const totals = computeTotals(rows);
+  const html = buildPdfHtml(vehicle, rangeLabel, rows, totals);
 
-  const pdfDoc = await PDFDocument.create();
+  // expo-print, HTML'i WebKit üzerinden PDF'e çevirip rastgele isimli bir
+  // geçici dosya döndürür (cache dizininde). Düzgün bir dosya adı
+  // (plaka_tarihAralığı.pdf) vermek için bu dosyanın baytlarını okuyup
+  // kendi isimlendirdiğimiz dosyaya yazıyoruz, sonra geçici dosyayı siliyoruz.
+  const { uri } = await Print.printToFileAsync({ html, base64: false });
 
-  const regularFont: PDFFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont: PDFFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  const t = (s: string) => foldTurkish(s);
-
-  const PAGE_WIDTH = 841.89; // A4 yatay
-  const PAGE_HEIGHT = 595.28;
-  const MARGIN = 24;
-  const usableWidth = PAGE_WIDTH - MARGIN * 2;
-  const totalWeight = PDF_COLUMNS.reduce((sum, c) => sum + c.weight, 0);
-  const colWidths = PDF_COLUMNS.map((c) => (c.weight / totalWeight) * usableWidth);
-  const colX: number[] = [];
-  {
-    let x = MARGIN;
-    for (const w of colWidths) {
-      colX.push(x);
-      x += w;
-    }
-  }
-
-  const ROW_HEIGHT = 14;
-  const HEADER_FONT_SIZE = 7.5;
-  const BODY_FONT_SIZE = 7;
-  const TITLE_FONT_SIZE = 12;
-
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  let y = PAGE_HEIGHT - MARGIN;
-
-  function drawTitle() {
-    page.drawText(t(`${vehicle.plate_no} - ${rangeLabel}`), {
-      x: MARGIN,
-      y,
-      size: TITLE_FONT_SIZE,
-      font: boldFont,
-    });
-    y -= TITLE_FONT_SIZE + 4;
-    page.drawText(t(`Oluşturulma: ${formatDateTimeLocal(new Date().toISOString())} · ${shifts.length} karpin`), {
-      x: MARGIN,
-      y,
-      size: 8,
-      font: regularFont,
-      color: rgb(0.4, 0.4, 0.4),
-    });
-    y -= 14;
-  }
-
-  function truncate(text: string, maxWidth: number, font: PDFFont, size: number): string {
-    let str = text;
-    while (str.length > 1 && font.widthOfTextAtSize(str, size) > maxWidth - 4) {
-      str = str.slice(0, -1);
-    }
-    if (str !== text && str.length > 1) str = `${str.slice(0, -1)}…`;
-    return str;
-  }
-
-  function drawHeaderRow() {
-    page.drawRectangle({
-      x: MARGIN,
-      y: y - ROW_HEIGHT + 3,
-      width: usableWidth,
-      height: ROW_HEIGHT,
-      color: rgb(1, 0.77, 0),
-    });
-    PDF_COLUMNS.forEach((col, i) => {
-      const text = truncate(t(col.header), colWidths[i], boldFont, HEADER_FONT_SIZE);
-      const textWidth = boldFont.widthOfTextAtSize(text, HEADER_FONT_SIZE);
-      const x = col.align === 'right' ? colX[i] + colWidths[i] - textWidth - 3 : colX[i] + 3;
-      page.drawText(text, { x, y, size: HEADER_FONT_SIZE, font: boldFont, color: rgb(0.09, 0.09, 0.09) });
-    });
-    y -= ROW_HEIGHT;
-  }
-
-  function ensureSpace() {
-    if (y < MARGIN + ROW_HEIGHT) {
-      page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN;
-      drawHeaderRow();
-    }
-  }
-
-  function drawDataRow(values: string[], opts?: { bold?: boolean }) {
-    ensureSpace();
-    const font = opts?.bold ? boldFont : regularFont;
-    values.forEach((raw, i) => {
-      const col = PDF_COLUMNS[i];
-      const text = truncate(t(raw), colWidths[i], font, BODY_FONT_SIZE);
-      const textWidth = font.widthOfTextAtSize(text, BODY_FONT_SIZE);
-      const x = col.align === 'right' ? colX[i] + colWidths[i] - textWidth - 3 : colX[i] + 3;
-      page.drawText(text, { x, y, size: BODY_FONT_SIZE, font, color: rgb(0.1, 0.1, 0.1) });
-    });
-    page.drawLine({
-      start: { x: MARGIN, y: y - 3 },
-      end: { x: MARGIN + usableWidth, y: y - 3 },
-      thickness: 0.4,
-      color: rgb(0.85, 0.85, 0.85),
-    });
-    y -= ROW_HEIGHT;
-  }
-
-  drawTitle();
-  drawHeaderRow();
-  rows.forEach((r) => drawDataRow(pdfRowValues(r)));
-
-  const totalsValues = [
-    'TOPLAM', '', '', '', '', '', '', '', '',
-    money(totals.revenue), money(totals.card), money(totals.fuel), money(totals.expenseAmount),
-    money(totals.driverShare), money(totals.ownerNet), money(totals.cash), money(totals.kmDebt), '',
-  ];
-  ensureSpace();
-  drawDataRow(totalsValues, { bold: true });
-
-  const bytes = await pdfDoc.save();
   const fileName = `${safeFileNamePart(vehicle.plate_no)}_${safeFileNamePart(rangeLabel)}.pdf`;
+  const tempFile = new File(uri);
+  const bytes = await tempFile.bytes();
   const file = new File(Paths.cache, fileName);
   if (file.exists) file.delete();
   file.create();
   file.write(bytes);
+  try {
+    tempFile.delete();
+  } catch {
+    // Geçici dosya silinemese de sorun değil, sistem cache'i periyodik temizler.
+  }
 
   await shareFile(file);
 }
