@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
@@ -102,22 +102,22 @@ const styles = StyleSheet.create({
   transparentBg: { backgroundColor: 'transparent' },
   rightColumn: { alignItems: 'center', gap: 0 },
   statusText: {
-    fontWeight: '800',
+    fontFamily: FontFamily.bodyBold,
     fontSize: 13,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   statusActiveText: { color: '#16A34A' },
   subLabel: { marginTop: Spacing.two },
-  subLabelBold: { fontWeight: '800' },
+  subLabelBold: { fontFamily: FontFamily.bodyBold },
   openedAtBadge: {
     position: 'absolute',
     top: Spacing.two,
     right: Spacing.three,
   },
-  openedAtText: { fontSize: 12, fontWeight: '800' },
+  openedAtText: { fontSize: 12, fontFamily: FontFamily.bodyBold },
   plateText: {
-    fontWeight: '800',
+    fontFamily: FontFamily.bodyBold,
     fontSize: 20,
     letterSpacing: 1,
   },

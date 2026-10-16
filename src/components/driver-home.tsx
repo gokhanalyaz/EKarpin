@@ -11,10 +11,10 @@ import { getAnyOpenShift, getLastClosedShiftForDriver, type Shift } from '@/lib/
 import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [openByMe, setOpenByMe] = useState<Record<string, boolean>>({});
-  const [cornerInfo, setCornerInfo] = useState<Record<string, { label: 'Açılış' | 'Kapanış'; iso: string } | undefined>>({});
+  type CardStatus = { shift: Shift | null; cornerLabel?: string; cornerIso?: string | null };
+  const [cardStatus, setCardStatus] = useState<Record<string, CardStatus>>({});
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
@@ -26,18 +26,20 @@ export function DriverHome() {
       setVehicles(data);
       const statuses = await Promise.all(
         data.map(async (v) => {
-          const open: Shift | null = await getAnyOpenShift(v.id).catch(() => null);
-          const isMine = open?.driver_id === profile.id;
-          if (isMine && open) {
-            return [v.id, { isMine: true, corner: { label: 'Açılış' as const, iso: open.opened_at } }] as const;
+          const open = await getAnyOpenShift(v.id).catch(() => null);
+          const mine = open?.driver_id === profile.id ? open : null;
+          if (mine) {
+            return [v.id, { shift: mine, cornerLabel: 'Açılış', cornerIso: mine.opened_at }] as const;
           }
+          // Vardiya kapaliysa, acilis yerine bu soforun bu aracta en son kapattigi saati gosterelim.
           const lastClosed = await getLastClosedShiftForDriver(v.id, profile.id).catch(() => null);
-          const corner = lastClosed?.closed_at ? { label: 'Kapanış' as const, iso: lastClosed.closed_at } : undefined;
-          return [v.id, { isMine: false, corner }] as const;
+          return [
+            v.id,
+            { shift: null, cornerLabel: lastClosed ? 'Kapanış' : undefined, cornerIso: lastClosed?.closed_at ?? null },
+          ] as const;
         })
       );
-      setOpenByMe(Object.fromEntries(statuses.map(([id, s]) => [id, s.isMine])));
-      setCornerInfo(Object.fromEntries(statuses.map(([id, s]) => [id, s.corner])));
+      setCardStatus(Object.fromEntries(statuses));
     } catch (e) {
       console.warn('Araçlar yüklenemedi', e);
     } finally {
@@ -54,16 +56,9 @@ export function DriverHome() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="subtitle">Araçlarım</ThemedText>
-        <Pressable onPress={signOut}>
-          <ThemedText type="linkPrimary">Çıkış</ThemedText>
-        </Pressable>
-      </ThemedView>
-
-      <Pressable style={styles.historyLink} onPress={() => router.push('/history')}>
-        <ThemedText type="linkPrimary">📋 Karpinlerimi Filtrele</ThemedText>
-      </Pressable>
+      <ThemedText type="title" style={styles.header}>
+        Araçlarım
+      </ThemedText>
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
@@ -78,16 +73,17 @@ export function DriverHome() {
             </ThemedText>
           }
           renderItem={({ item }) => {
-            const corner = cornerInfo[item.id];
+            const st = cardStatus[item.id];
+            const open = st?.shift;
             return (
               <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
                 <VehicleCard
                   vehicle={item}
-                  statusLabel={openByMe[item.id] ? 'Vardiyan Açık' : 'Vardiya Açmak İçin Dokun'}
-                  statusActive={openByMe[item.id]}
-                  subLabel={openByMe[item.id] ? 'Kapatmak için dokun' : undefined}
-                  cornerTimeLabel={corner?.label}
-                  cornerTimeIso={corner?.iso}
+                  statusActive={!!open}
+                  statusLabel={open ? 'Vardiyan Açık' : 'Vardiya Kapalı'}
+                  subLabel={open ? 'Kapatmak için dokun' : 'Açmak için dokun'}
+                  cornerTimeLabel={st?.cornerLabel}
+                  cornerTimeIso={st?.cornerIso}
                 />
               </Pressable>
             );
@@ -105,15 +101,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  historyLink: { marginBottom: Spacing.three },
+  header: { textAlign: 'center', marginTop: Spacing.two, marginBottom: Spacing.five },
   loading: { marginTop: Spacing.four },
-  list: { gap: Spacing.two, paddingBottom: Spacing.four, flexGrow: 1 },
+  list: { gap: Spacing.four, paddingBottom: Spacing.four, flexGrow: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
 });

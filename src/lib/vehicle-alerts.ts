@@ -67,3 +67,16 @@ export async function listVehicleAlerts(vehicleId: string, limit = 20): Promise<
   if (error) throw error;
   return (data ?? []) as VehicleAlert[];
 }
+
+/** Arac sahibinin TUM araclarindaki bildirimleri (en yeniden eskiye) - "Bildirimler" sekmesi icin. */
+export async function listOwnerVehicleAlerts(vehicleIds: string[], limit = 50): Promise<VehicleAlert[]> {
+  if (vehicleIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('vehicle_alerts')
+    .select('*')
+    .in('vehicle_id', vehicleIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as VehicleAlert[];
+}

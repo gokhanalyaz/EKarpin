@@ -11,14 +11,17 @@ export const Colors = {
   light: {
     text: '#000000',
     background: '#ffffff',
-    backgroundElement: '#F0F0F3',
+    // Soguk gri yerine marka sarisindan gelen sicak bir krem tonu -
+    // kartlar (arac listesi, ozet kutulari, form kutulari) artik
+    // "sade gri kutu" gibi degil, kendine ait bir karakteri var.
+    backgroundElement: '#FBF3DF',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
   },
   dark: {
     text: '#ffffff',
     background: '#000000',
-    backgroundElement: '#212225',
+    backgroundElement: '#241F14',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
   },
@@ -35,6 +38,20 @@ export const Brand = {
   primary: '#FFC400',
   primaryPressed: '#E0AC00',
   onPrimary: '#171717',
+} as const;
+
+/**
+ * Ozel yazi tipi aileleri (Google Fonts: Archivo + Inter, _layout.tsx'te
+ * useFonts ile yukleniyor). Basliklarda Archivo (kalin/iddiali), govde
+ * metninde Inter (ince/okunakli) kullaniliyor - Netflix/Zara karisimi his.
+ */
+export const FontFamily = {
+  displayBlack: 'Archivo_900Black',
+  displayBold: 'Archivo_800ExtraBold',
+  body: 'Inter_400Regular',
+  bodyMedium: 'Inter_500Medium',
+  bodySemiBold: 'Inter_600SemiBold',
+  bodyBold: 'Inter_700Bold',
 } as const;
 
 export const Fonts = Platform.select({

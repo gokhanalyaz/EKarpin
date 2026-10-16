@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
@@ -178,7 +177,6 @@ export default function DriverComparisonScreen() {
           </ThemedView>
         )}
       </ScrollView>
-      <BottomTabBar current="drivers" />
     </ThemedView>
   );
 }

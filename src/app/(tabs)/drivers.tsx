@@ -1,9 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { PhoneInput } from '@/components/phone-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -23,7 +21,6 @@ type VehicleGroup = { vehicle: Vehicle; drivers: VehicleDriverRow[] };
 
 export default function DriversScreen() {
   const { profile } = useAuth();
-  const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState<VehicleGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingForVehicle, setAddingForVehicle] = useState<string | null>(null);
@@ -134,89 +131,86 @@ export default function DriversScreen() {
   }
 
   return (
-    <ThemedView style={{ flex: 1, paddingTop: insets.top }}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-        <ThemedText type="title" style={styles.title}>
-          Şoförler
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-          Araçlarına atanmış tüm şoförleri buradan yönetebilirsin.
-        </ThemedText>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      <ThemedText type="title" style={styles.title}>
+        Şoförler
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
+        Araçlarına atanmış tüm şoförleri buradan yönetebilirsin.
+      </ThemedText>
 
-        {loading ? (
-          <ActivityIndicator style={styles.loading} />
-        ) : groups.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-            Henüz araç eklemedin.
-          </ThemedText>
-        ) : (
-          groups.map(({ vehicle, drivers }) => (
-            <ThemedView key={vehicle.id} type="backgroundElement" style={styles.vehicleGroup}>
-              <Pressable onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
-                <ThemedText type="smallBold">{vehicle.plate_no}</ThemedText>
-              </Pressable>
+      {loading ? (
+        <ActivityIndicator style={styles.loading} />
+      ) : groups.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
+          Henüz araç eklemedin.
+        </ThemedText>
+      ) : (
+        groups.map(({ vehicle, drivers }) => (
+          <ThemedView key={vehicle.id} type="backgroundElement" style={styles.vehicleGroup}>
+            <Pressable onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
+              <ThemedText type="smallBold">{vehicle.plate_no}</ThemedText>
+            </Pressable>
 
-              {drivers.length === 0 ? (
-                <ThemedText type="small" themeColor="textSecondary" style={styles.noDrivers}>
-                  Henüz şoför eklenmedi.
-                </ThemedText>
-              ) : (
-                <ThemedView style={styles.driverList}>
-                  {drivers.map((row) => (
-                    <ThemedView key={row.id} style={styles.driverRow}>
-                      <ThemedView style={{ flex: 1 }}>
-                        <ThemedText type="small">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {row.driver?.phone ? `+${row.driver.phone}` : '-'}
-                        </ThemedText>
-                      </ThemedView>
-                      <Pressable onPress={() => handleDelete(vehicle.id, row)}>
-                        <ThemedText type="small" style={styles.deleteText}>
-                          Şoförü Sil
-                        </ThemedText>
-                      </Pressable>
+            {drivers.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.noDrivers}>
+                Henüz şoför eklenmedi.
+              </ThemedText>
+            ) : (
+              <ThemedView style={styles.driverList}>
+                {drivers.map((row) => (
+                  <ThemedView key={row.id} style={styles.driverRow}>
+                    <ThemedView style={{ flex: 1 }}>
+                      <ThemedText type="small">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {row.driver?.phone ? `+${row.driver.phone}` : '-'}
+                      </ThemedText>
                     </ThemedView>
-                  ))}
-                </ThemedView>
-              )}
+                    <Pressable onPress={() => handleDelete(vehicle.id, row)}>
+                      <ThemedText type="small" style={styles.deleteText}>
+                        Şoförü Sil
+                      </ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                ))}
+              </ThemedView>
+            )}
 
-              {addingForVehicle === vehicle.id ? (
-                <ThemedView style={styles.addForm}>
-                  <PhoneInput value={phone} onChangeText={setPhone} />
-                  <Pressable
-                    style={({ pressed }) => [styles.button, (assigning || pressed) && styles.buttonPressed]}
-                    onPress={() => handleAssign(vehicle.id)}
-                    disabled={assigning}>
-                    <ThemedText style={styles.buttonText}>
-                      {assigning ? 'Ekleniyor...' : 'Şoför Ekle'}
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    style={styles.linkButton}
-                    onPress={() => {
-                      setAddingForVehicle(null);
-                      setPhone('');
-                    }}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Vazgeç
-                    </ThemedText>
-                  </Pressable>
-                </ThemedView>
-              ) : (
-                <Pressable style={styles.addDriverButton} onPress={() => setAddingForVehicle(vehicle.id)}>
-                  <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
+            {addingForVehicle === vehicle.id ? (
+              <ThemedView style={styles.addForm}>
+                <PhoneInput value={phone} onChangeText={setPhone} />
+                <Pressable
+                  style={({ pressed }) => [styles.button, (assigning || pressed) && styles.buttonPressed]}
+                  onPress={() => handleAssign(vehicle.id)}
+                  disabled={assigning}>
+                  <ThemedText style={styles.buttonText}>
+                    {assigning ? 'Ekleniyor...' : 'Şoför Ekle'}
+                  </ThemedText>
                 </Pressable>
-              )}
-            </ThemedView>
-          ))
-        )}
+                <Pressable
+                  style={styles.linkButton}
+                  onPress={() => {
+                    setAddingForVehicle(null);
+                    setPhone('');
+                  }}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Vazgeç
+                  </ThemedText>
+                </Pressable>
+              </ThemedView>
+            ) : (
+              <Pressable style={styles.addDriverButton} onPress={() => setAddingForVehicle(vehicle.id)}>
+                <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
+              </Pressable>
+            )}
+          </ThemedView>
+        ))
+      )}
 
-        <Pressable style={styles.compareLink} onPress={() => router.push('/driver-comparison')}>
-          <ThemedText type="linkPrimary">📊 Şoförleri Karşılaştır</ThemedText>
-        </Pressable>
-      </ScrollView>
-      <BottomTabBar current="drivers" />
-    </ThemedView>
+      <Pressable style={styles.compareLink} onPress={() => router.push('/driver-comparison')}>
+        <ThemedText type="linkPrimary">📊 Şoförleri Karşılaştır</ThemedText>
+      </Pressable>
+    </ScrollView>
   );
 }
 

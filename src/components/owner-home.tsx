@@ -1,28 +1,20 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { getAnyOpenShift, getLastClosedShift, type Shift } from '@/lib/shifts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
-type StatusInfo = {
-  open: boolean;
-  driverName?: string;
-  cornerTimeLabel?: 'Açılış' | 'Kapanış';
-  cornerTimeIso?: string;
-};
+type StatusInfo = { open: boolean; driverName?: string; cornerLabel?: string; cornerIso?: string | null };
 
 export function OwnerHome() {
-  const { profile, signOut } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [status, setStatus] = useState<Record<string, StatusInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -38,25 +30,19 @@ export function OwnerHome() {
       const entries = await Promise.all(
         data.map(async (v) => {
           const open: Shift | null = await getAnyOpenShift(v.id).catch(() => null);
-          const drivers = await listVehicleDrivers(v.id).catch(() => []);
           if (open) {
+            const drivers = await listVehicleDrivers(v.id).catch(() => []);
             const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
             return [
               v.id,
-              { open: true, driverName: driverName ?? undefined, cornerTimeLabel: 'Açılış' as const, cornerTimeIso: open.opened_at },
+              { open: true, driverName: driverName ?? undefined, cornerLabel: 'Açılış', cornerIso: open.opened_at },
             ] as const;
           }
-          const lastClosed: Shift | null = await getLastClosedShift(v.id).catch(() => null);
-          if (!lastClosed) return [v.id, { open: false }] as const;
-          const driverName = drivers.find((d) => d.driver_id === lastClosed.driver_id)?.driver?.full_name;
+          // Vardiya kapaliysa, acilis yerine bu aracin en son kapandigi saati not olarak gosterelim.
+          const lastClosed = await getLastClosedShift(v.id).catch(() => null);
           return [
             v.id,
-            {
-              open: false,
-              driverName: driverName ?? undefined,
-              cornerTimeLabel: 'Kapanış' as const,
-              cornerTimeIso: lastClosed.closed_at ?? undefined,
-            },
+            { open: false, cornerLabel: lastClosed ? 'Kapanış' : undefined, cornerIso: lastClosed?.closed_at ?? null },
           ] as const;
         })
       );
@@ -76,14 +62,10 @@ export function OwnerHome() {
   );
 
   return (
-    <ThemedView style={styles.root}>
-      <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.four }]}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="subtitle">Araçlarım</ThemedText>
-        <Pressable onPress={signOut}>
-          <ThemedText type="linkPrimary">Çıkış</ThemedText>
-        </Pressable>
-      </ThemedView>
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.header}>
+        Araçlarım
+      </ThemedText>
 
       {loading ? (
         <ActivityIndicator style={styles.loading} />
@@ -103,12 +85,12 @@ export function OwnerHome() {
               <Pressable onPress={() => router.push(`/vehicle/${item.id}`)}>
                 <VehicleCard
                   vehicle={item}
-                  statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
                   statusActive={s?.open}
-                  subLabel={s?.driverName}
+                  statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
+                  subLabel={s?.open ? s.driverName : undefined}
                   subLabelBold
-                  cornerTimeLabel={s?.cornerTimeLabel}
-                  cornerTimeIso={s?.cornerTimeIso}
+                  cornerTimeLabel={s?.cornerLabel}
+                  cornerTimeIso={s?.cornerIso}
                 />
               </Pressable>
             );
@@ -121,30 +103,21 @@ export function OwnerHome() {
         onPress={() => router.push('/add-vehicle')}>
         <ThemedText style={styles.addButtonText}>+ Araç Ekle</ThemedText>
       </Pressable>
-      </ThemedView>
-      <BottomTabBar current="home" />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
   container: {
     flex: 1,
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  historyLink: { marginBottom: Spacing.three },
+  header: { textAlign: 'center', marginTop: Spacing.two, marginBottom: Spacing.five },
   loading: { marginTop: Spacing.four },
-  list: { gap: Spacing.two, paddingBottom: Spacing.four, flexGrow: 1 },
+  list: { gap: Spacing.four, paddingBottom: Spacing.four, flexGrow: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   addButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
@@ -152,5 +125,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonPressed: { opacity: 0.7 },
-  addButtonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  addButtonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });
