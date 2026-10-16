@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet } from 'react-native';
 
 import { DateTimeRangePicker, type DateTimeRange } from '@/components/date-time-range-picker';
 import { PhotoViewButton } from '@/components/photo-view-button';
@@ -10,6 +10,7 @@ import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { PRESET_LABELS, presetToRange, type DatePreset } from '@/lib/date-presets';
+import { exportShiftsToExcel, exportShiftsToPdf } from '@/lib/export-shifts';
 import {
   formatDuration,
   getShiftDurationMinutes,
@@ -38,6 +39,16 @@ export function formatDateTime(iso: string): string {
 
 function formatTL(value: number | null | undefined): string {
   return `${(value ?? 0).toFixed(2)} ₺`;
+}
+
+/** Aktif tarih filtresini (preset veya özel aralık) dosya adı/başlıkta kullanılacak kısa bir etikete çevirir. */
+function describeRange(preset: DatePreset, customRange: DateTimeRange | null): string {
+  if (customRange) {
+    const from = customRange.from.toLocaleDateString('tr-TR');
+    const to = customRange.to.toLocaleDateString('tr-TR');
+    return from === to ? from : `${from} - ${to}`;
+  }
+  return PRESET_LABELS[preset];
 }
 
 function DetailRow({
@@ -304,6 +315,7 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
   const [customRange, setCustomRange] = useState<DateTimeRange | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [settlementFilter, setSettlementFilter] = useState<'all' | 'pending' | 'done'>('all');
+  const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
 
   const load = () => {
     return Promise.all([listVehicleShifts(vehicle.id), listVehicleDrivers(vehicle.id)]).then(
@@ -402,6 +414,23 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
     }
   }
 
+  async function handleExport(kind: 'excel' | 'pdf') {
+    if (exporting) return;
+    setExporting(kind);
+    try {
+      const rangeLabel = describeRange(preset, customRange);
+      if (kind === 'excel') {
+        await exportShiftsToExcel(vehicle, visibleShifts, driverNames, rangeLabel);
+      } else {
+        await exportShiftsToPdf(vehicle, visibleShifts, driverNames, rangeLabel);
+      }
+    } catch (e: any) {
+      Alert.alert('Dışa aktarılamadı', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setExporting(null);
+    }
+  }
+
   if (loading) return null;
 
   if (shifts.length === 0) {
@@ -471,6 +500,30 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
               {settlementTotals.doneTotal.toFixed(2)} ₺
             </ThemedText>
           </ThemedView>
+          {isOwner && (
+            <ThemedView style={[styles.exportRow, styles.transparentBg]}>
+              <Pressable
+                style={({ pressed }) => [styles.exportButton, (pressed || exporting === 'pdf') && styles.buttonPressed]}
+                disabled={!!exporting}
+                onPress={() => handleExport('excel')}>
+                {exporting === 'excel' ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <ThemedText type="smallBold">📊 Excel'e Aktar</ThemedText>
+                )}
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.exportButton, (pressed || exporting === 'excel') && styles.buttonPressed]}
+                disabled={!!exporting}
+                onPress={() => handleExport('pdf')}>
+                {exporting === 'pdf' ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <ThemedText type="smallBold">📄 PDF'e Aktar</ThemedText>
+                )}
+              </Pressable>
+            </ThemedView>
+          )}
         </>
       )}
 
@@ -571,6 +624,15 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
   filterChipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   summaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
+  exportRow: { flexDirection: 'row', gap: Spacing.two },
+  exportButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#94A3B8',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
   batchButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,

@@ -88,7 +88,12 @@ export async function setEnabledExpenseCategories(
   if (error) throw error;
 }
 
-/** Arac sahibi, yuzdelik araclarda km-hasilat karsilastirmasi icin beklenen km basi hasilati girer. */
+/**
+ * Arac sahibi, yuzdelik araclarda km-hasilat karsilastirmasi icin beklenen km basi hasilati girer.
+ * NOT: Bu fonksiyon hala duruyor ama Arac Ayarlari ekranindaki UI'si simdilik
+ * kaldirildi (kullanicinin istegiyle) - ileride (uygulama yayildikca) UI geri
+ * eklenebilir, bu yuzden alt yapi burada bilerek silinmedi.
+ */
 export async function setExpectedRevenuePerKm(
   vehicleId: string,
   rate: number | null

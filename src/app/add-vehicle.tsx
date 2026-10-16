@@ -9,6 +9,16 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { createVehicle, type PaymentModel } from '@/lib/vehicles';
 
+/**
+ * TODO (ileride yapılacak - henüz başlanmadı, ayrı bir oturumda ele alınacak):
+ * Ticari araç eklerken ruhsat (taşıt belgesi) fotoğrafı istenip OCR ile
+ * plaka otomatik okunacak; plaka "35T" ile başlamıyorsa araç eklenmeyecek.
+ * Plaka ruhsattan otomatik alınacağı için kullanıcı elle yazmayacak.
+ * Ruhsat + sonrasında sigorta vb. tüm araç belgeleri kayıt altına alınıp
+ * araç sahibi (admin) istediği an bu belgelere ulaşabilecek. Bunun için:
+ * yeni bir "vehicle_documents" tablosu/bucket, bir OCR servisi (örn. bir
+ * cloud OCR API'si) ve bu ekranın önüne bir "Ruhsat Ekle" adımı gerekiyor.
+ */
 export default function AddVehicleScreen() {
   const theme = useTheme();
   const { profile } = useAuth();
