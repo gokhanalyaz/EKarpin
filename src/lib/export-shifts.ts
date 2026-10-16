@@ -1,12 +1,7 @@
-import { Asset } from 'expo-asset';
 import { File, Paths } from 'expo-file-system';
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import { Alert, Platform, Share } from 'react-native';
 import * as XLSX from 'xlsx';
-// @ts-ignore: @pdf-lib/fontkit'in tip tanımı olmayabilir (paket sürümüne göre değişiyor).
-import fontkit from '@pdf-lib/fontkit';
-
-import { Inter_400Regular, Inter_700Bold } from '@expo-google-fonts/inter';
 
 import type { Shift } from '@/lib/shifts';
 import type { Vehicle } from '@/lib/vehicles';
@@ -234,18 +229,12 @@ export async function exportShiftsToExcel(
 // PDF
 // ---------------------------------------------------------------------------
 
-/** İnter TTF'lerini (zaten uygulamada kullanılıyor) PDF'e gömebilmek için byte olarak okur. */
-async function loadFontBytes(assetModule: number): Promise<Uint8Array> {
-  const asset = Asset.fromModule(assetModule);
-  await asset.downloadAsync();
-  const uri = asset.localUri ?? asset.uri;
-  const file = new File(uri);
-  return await file.bytes();
-}
-
-// Türkçe'ye özgü (WinAnsi/Latin-1'de olmayan) karakterler için - özel font
-// gömme herhangi bir nedenle başarısız olursa, çökmek yerine okunaklı bir
-// PDF üretebilmek için ASCII karşılığına düşürüyoruz.
+// Türkçe'ye özgü (standart PDF fontlarının WinAnsi/Latin-1 kodlamasında
+// olmayan) karakterler için ASCII karşılığına düşürüyoruz. Daha önce bunun
+// yerine özel bir font (Inter) gömülüyordu, ama cihazda font gömme bazı
+// harflerin (özellikle rakamların) tamamen kaybolmasına yol açtı - bu
+// yüzden güvenilirlik için PDF her zaman standart fontla, aksansız ama
+// EKSİKSİZ ve okunaklı üretiliyor.
 const TURKISH_FOLD: Record<string, string> = {
   ş: 's', Ş: 'S', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ü: 'u', Ü: 'U', ç: 'c', Ç: 'C',
 };
@@ -319,25 +308,10 @@ export async function exportShiftsToPdf(
 
   const pdfDoc = await PDFDocument.create();
 
-  let regularFont: PDFFont;
-  let boldFont: PDFFont;
-  let asciiOnly = false;
-  try {
-    pdfDoc.registerFontkit(fontkit);
-    const [regularBytes, boldBytes] = await Promise.all([
-      loadFontBytes(Inter_400Regular),
-      loadFontBytes(Inter_700Bold),
-    ]);
-    regularFont = await pdfDoc.embedFont(regularBytes, { subset: true });
-    boldFont = await pdfDoc.embedFont(boldBytes, { subset: true });
-  } catch (e) {
-    console.warn('Özel font (Inter) PDF içine gömülemedi, standart fonta düşülüyor', e);
-    asciiOnly = true;
-    regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  }
+  const regularFont: PDFFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont: PDFFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const t = (s: string) => (asciiOnly ? foldTurkish(s) : s);
+  const t = (s: string) => foldTurkish(s);
 
   const PAGE_WIDTH = 841.89; // A4 yatay
   const PAGE_HEIGHT = 595.28;
