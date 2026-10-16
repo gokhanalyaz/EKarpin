@@ -560,3 +560,21 @@ export function isShiftVisibleToDriver(
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
   return ageDays <= visibilityDays;
 }
+
+/**
+ * Araç sahibi, bir şoförün bu araçtaki karpinlerinden SEÇİLİ olanları
+ * (shiftIds verilirse) veya TÜMÜNÜ (shiftIds verilmezse/boşsa) siler.
+ * Şoförü araçtan kaldırmaktan bağımsız olarak da kullanılabilir.
+ */
+export async function deleteDriverShifts(
+  vehicleId: string,
+  driverId: string,
+  shiftIds?: string[]
+): Promise<void> {
+  let query = supabase.from('shifts').delete().eq('vehicle_id', vehicleId).eq('driver_id', driverId);
+  if (shiftIds && shiftIds.length > 0) {
+    query = query.in('id', shiftIds);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
