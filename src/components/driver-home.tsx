@@ -4,15 +4,17 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { VehicleCard } from '@/components/vehicle-card';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getAnyOpenShift } from '@/lib/shifts';
+import { getAnyOpenShift, getLastClosedShiftForDriver, type Shift } from '@/lib/shifts';
 import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
   const { profile, signOut } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [openByMe, setOpenByMe] = useState<Record<string, boolean>>({});
+  const [cornerInfo, setCornerInfo] = useState<Record<string, { label: 'Açılış' | 'Kapanış'; iso: string } | undefined>>({});
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
@@ -24,11 +26,18 @@ export function DriverHome() {
       setVehicles(data);
       const statuses = await Promise.all(
         data.map(async (v) => {
-          const open = await getAnyOpenShift(v.id).catch(() => null);
-          return [v.id, open?.driver_id === profile.id] as const;
+          const open: Shift | null = await getAnyOpenShift(v.id).catch(() => null);
+          const isMine = open?.driver_id === profile.id;
+          if (isMine && open) {
+            return [v.id, { isMine: true, corner: { label: 'Açılış' as const, iso: open.opened_at } }] as const;
+          }
+          const lastClosed = await getLastClosedShiftForDriver(v.id, profile.id).catch(() => null);
+          const corner = lastClosed?.closed_at ? { label: 'Kapanış' as const, iso: lastClosed.closed_at } : undefined;
+          return [v.id, { isMine: false, corner }] as const;
         })
       );
-      setOpenByMe(Object.fromEntries(statuses));
+      setOpenByMe(Object.fromEntries(statuses.map(([id, s]) => [id, s.isMine])));
+      setCornerInfo(Object.fromEntries(statuses.map(([id, s]) => [id, s.corner])));
     } catch (e) {
       console.warn('Araçlar yüklenemedi', e);
     } finally {
@@ -68,21 +77,20 @@ export function DriverHome() {
               Henüz hiçbir araca atanmadın. Araç sahibinin seni eklemesini bekle.
             </ThemedText>
           }
-          renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
-              <ThemedView type="backgroundElement" style={styles.card}>
-                <ThemedText type="smallBold">{item.plate_no}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.payment_model === 'percentage'
-                    ? `Yüzdelik sistem (%${item.percentage_rate ?? 25})`
-                    : `Km sistemi (${item.km_rate ?? '-'} TL/km)`}
-                </ThemedText>
-                <ThemedText type="small" themeColor={openByMe[item.id] ? undefined : 'textSecondary'}>
-                  {openByMe[item.id] ? 'Vardiyan açık — kapatmak için dokun' : 'Vardiya açmak için dokun'}
-                </ThemedText>
-              </ThemedView>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const corner = cornerInfo[item.id];
+            return (
+              <Pressable onPress={() => router.push(`/shift/${item.id}`)}>
+                <VehicleCard
+                  vehicle={item}
+                  statusLabel={openByMe[item.id] ? 'Vardiyan Açık' : 'Vardiya Açmak İçin Dokun'}
+                  statusActive={openByMe[item.id]}
+                  cornerTimeLabel={corner?.label}
+                  cornerTimeIso={corner?.iso}
+                />
+              </Pressable>
+            );
+          }}
         />
       )}
     </ThemedView>

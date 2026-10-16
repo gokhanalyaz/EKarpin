@@ -6,13 +6,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { VehicleCard } from '@/components/vehicle-card';
 import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { getAnyOpenShift, type Shift } from '@/lib/shifts';
+import { getAnyOpenShift, getLastClosedShift, type Shift } from '@/lib/shifts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
-type StatusInfo = { open: boolean; driverName?: string };
+type StatusInfo = {
+  open: boolean;
+  driverName?: string;
+  cornerTimeLabel?: 'Açılış' | 'Kapanış';
+  cornerTimeIso?: string;
+};
 
 export function OwnerHome() {
   const { profile, signOut } = useAuth();
@@ -32,10 +38,26 @@ export function OwnerHome() {
       const entries = await Promise.all(
         data.map(async (v) => {
           const open: Shift | null = await getAnyOpenShift(v.id).catch(() => null);
-          if (!open) return [v.id, { open: false }] as const;
           const drivers = await listVehicleDrivers(v.id).catch(() => []);
-          const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
-          return [v.id, { open: true, driverName: driverName ?? undefined }] as const;
+          if (open) {
+            const driverName = drivers.find((d) => d.driver_id === open.driver_id)?.driver?.full_name;
+            return [
+              v.id,
+              { open: true, driverName: driverName ?? undefined, cornerTimeLabel: 'Açılış' as const, cornerTimeIso: open.opened_at },
+            ] as const;
+          }
+          const lastClosed: Shift | null = await getLastClosedShift(v.id).catch(() => null);
+          if (!lastClosed) return [v.id, { open: false }] as const;
+          const driverName = drivers.find((d) => d.driver_id === lastClosed.driver_id)?.driver?.full_name;
+          return [
+            v.id,
+            {
+              open: false,
+              driverName: driverName ?? undefined,
+              cornerTimeLabel: 'Kapanış' as const,
+              cornerTimeIso: lastClosed.closed_at ?? undefined,
+            },
+          ] as const;
         })
       );
       setStatus(Object.fromEntries(entries));
@@ -79,19 +101,14 @@ export function OwnerHome() {
             const s = status[item.id];
             return (
               <Pressable onPress={() => router.push(`/vehicle/${item.id}`)}>
-                <ThemedView type="backgroundElement" style={styles.card}>
-                  <ThemedText type="smallBold">{item.plate_no}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {item.payment_model === 'percentage'
-                      ? `Yüzdelik sistem (%${item.percentage_rate ?? 25})`
-                      : `Km sistemi (${item.km_rate ?? '-'} TL/km)`}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor={s?.open ? undefined : 'textSecondary'}>
-                    {s?.open
-                      ? `Vardiya açık${s.driverName ? ` — ${s.driverName}` : ''}`
-                      : 'Vardiya kapalı'}
-                  </ThemedText>
-                </ThemedView>
+                <VehicleCard
+                  vehicle={item}
+                  statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
+                  statusActive={s?.open}
+                  subLabel={s?.driverName}
+                  cornerTimeLabel={s?.cornerTimeLabel}
+                  cornerTimeIso={s?.cornerTimeIso}
+                />
               </Pressable>
             );
           }}
