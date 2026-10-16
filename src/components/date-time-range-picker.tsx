@@ -42,6 +42,15 @@ function wrap(value: number, mod: number): number {
   return ((value % mod) + mod) % mod;
 }
 
+const QUICK_TIMES: { hour: number; minute: number; label: string }[] = [
+  { hour: 0, minute: 0, label: '00:00' },
+  { hour: 6, minute: 0, label: '06:00' },
+  { hour: 8, minute: 0, label: '08:00' },
+  { hour: 12, minute: 0, label: '12:00' },
+  { hour: 18, minute: 0, label: '18:00' },
+  { hour: 23, minute: 59, label: '23:59' },
+];
+
 function TimeStepper({
   label,
   hour,
@@ -56,32 +65,52 @@ function TimeStepper({
   onChangeMinute: (m: number) => void;
 }) {
   return (
-    <View style={styles.timeRow}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.timeLabel}>
-        {label}
-      </ThemedText>
-      <View style={styles.timeControls}>
-        <Pressable style={styles.timeStepButton} onPress={() => onChangeHour(wrap(hour - 1, 24))} hitSlop={6}>
-          <ThemedText type="smallBold">−</ThemedText>
-        </Pressable>
-        <ThemedText type="smallBold" style={styles.timeValue}>
-          {pad2(hour)}
+    <View style={styles.timeSectionGroup}>
+      <View style={styles.timeRow}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.timeLabel}>
+          {label}
         </ThemedText>
-        <Pressable style={styles.timeStepButton} onPress={() => onChangeHour(wrap(hour + 1, 24))} hitSlop={6}>
-          <ThemedText type="smallBold">+</ThemedText>
-        </Pressable>
-        <ThemedText type="smallBold" style={styles.timeColon}>
-          :
-        </ThemedText>
-        <Pressable style={styles.timeStepButton} onPress={() => onChangeMinute(wrap(minute - 5, 60))} hitSlop={6}>
-          <ThemedText type="smallBold">−</ThemedText>
-        </Pressable>
-        <ThemedText type="smallBold" style={styles.timeValue}>
-          {pad2(minute)}
-        </ThemedText>
-        <Pressable style={styles.timeStepButton} onPress={() => onChangeMinute(wrap(minute + 5, 60))} hitSlop={6}>
-          <ThemedText type="smallBold">+</ThemedText>
-        </Pressable>
+        <View style={styles.timeControls}>
+          <Pressable style={styles.timeStepButton} onPress={() => onChangeHour(wrap(hour - 1, 24))} hitSlop={6}>
+            <ThemedText type="smallBold">−</ThemedText>
+          </Pressable>
+          <ThemedText type="smallBold" style={styles.timeValue}>
+            {pad2(hour)}
+          </ThemedText>
+          <Pressable style={styles.timeStepButton} onPress={() => onChangeHour(wrap(hour + 1, 24))} hitSlop={6}>
+            <ThemedText type="smallBold">+</ThemedText>
+          </Pressable>
+          <ThemedText type="smallBold" style={styles.timeColon}>
+            :
+          </ThemedText>
+          <Pressable style={styles.timeStepButton} onPress={() => onChangeMinute(wrap(minute - 5, 60))} hitSlop={6}>
+            <ThemedText type="smallBold">−</ThemedText>
+          </Pressable>
+          <ThemedText type="smallBold" style={styles.timeValue}>
+            {pad2(minute)}
+          </ThemedText>
+          <Pressable style={styles.timeStepButton} onPress={() => onChangeMinute(wrap(minute + 5, 60))} hitSlop={6}>
+            <ThemedText type="smallBold">+</ThemedText>
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.quickTimeRow}>
+        {QUICK_TIMES.map((qt) => {
+          const active = hour === qt.hour && minute === qt.minute;
+          return (
+            <Pressable
+              key={qt.label}
+              style={[styles.quickTimeChip, active && styles.quickTimeChipActive]}
+              onPress={() => {
+                onChangeHour(qt.hour);
+                onChangeMinute(qt.minute);
+              }}>
+              <ThemedText type="small" style={active ? styles.quickTimeChipTextActive : undefined}>
+                {qt.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -266,7 +295,18 @@ const styles = StyleSheet.create({
   daySelectedText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   dayTodayText: { color: Brand.primaryPressed, fontFamily: FontFamily.bodyBold },
   hint: { textAlign: 'center' },
-  timeSection: { gap: Spacing.two, marginTop: Spacing.one },
+  timeSection: { gap: Spacing.three, marginTop: Spacing.one },
+  timeSectionGroup: { gap: Spacing.one },
+  quickTimeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  quickTimeChip: {
+    borderWidth: 1,
+    borderColor: '#94A3B8',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  quickTimeChipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
+  quickTimeChipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   timeLabel: { flexShrink: 1 },
   timeControls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },

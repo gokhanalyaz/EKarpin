@@ -80,3 +80,9 @@ export async function listOwnerVehicleAlerts(vehicleIds: string[], limit = 50): 
   if (error) throw error;
   return (data ?? []) as VehicleAlert[];
 }
+
+/** Araç sahibi bildirimi gördükten sonra listesinden kalıcı olarak kaldırır. */
+export async function deleteVehicleAlert(alertId: string): Promise<void> {
+  const { error } = await supabase.from('vehicle_alerts').delete().eq('id', alertId);
+  if (error) throw error;
+}

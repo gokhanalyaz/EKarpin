@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput 
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { getSuggestedOpeningKm } from '@/lib/shifts';
@@ -104,7 +104,7 @@ export default function MaintenanceScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <ThemedText type="title" style={styles.title}>
-        Bakım &amp; Lastik
+        Araç Bakım
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
         Araçlarının bakım ve lastik değişimlerini km bilgisiyle kaydet, sırası geldiğinde hatırlatma al.
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   title: { marginBottom: Spacing.half },
   subtitle: { marginBottom: Spacing.two },
   sectionTitle: { marginTop: Spacing.three },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, backgroundColor: 'transparent' },
   chip: {
     borderWidth: 1,
     borderColor: '#94A3B8',
@@ -283,17 +283,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  chipTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  chipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
+  chipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   loading: { marginTop: Spacing.four },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   kmBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.two },
-  list: { gap: Spacing.two, marginTop: Spacing.two },
+  list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   logCard: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
-  logHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  logHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
   dueSoonText: { color: '#B45309', fontWeight: '700' },
   overdueText: { color: '#DC2626', fontWeight: '700' },
-  addForm: { gap: Spacing.two, marginTop: Spacing.two },
+  addForm: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   input: {
     borderWidth: 1,
     borderRadius: Spacing.two,
@@ -315,6 +315,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonPressed: { opacity: 0.7 },
-  buttonText: { color: Brand.onPrimary, fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
   linkButton: { alignItems: 'center', marginTop: Spacing.one },
 });

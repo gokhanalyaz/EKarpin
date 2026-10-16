@@ -49,14 +49,18 @@ export default function VehicleDetailScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ThemedView style={[styles.titleRow, styles.transparentBg]}>
+        <ThemedView style={[styles.settingsButton, styles.transparentBg]} />
         <ThemedText type="title" style={styles.title}>
           {vehicle.plate_no}
         </ThemedText>
         <Pressable
           hitSlop={12}
           onPress={() => router.push(`/vehicle-settings/${vehicle.id}`)}
-          style={({ pressed }) => pressed && styles.buttonPressed}>
-          <SymbolView name="gearshape" size={24} tintColor={theme.text} />
+          style={({ pressed }) => [styles.settingsButton, pressed && styles.buttonPressed]}>
+          <SymbolView name="gearshape" size={22} tintColor={theme.text} />
+          <ThemedText type="small" themeColor="textSecondary">
+            Ayarlar
+          </ThemedText>
         </Pressable>
       </ThemedView>
       <PaymentModelBadge vehicle={vehicle} />
@@ -74,7 +78,8 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   transparentBg: { backgroundColor: 'transparent' },
-  title: { flex: 1 },
+  title: { flex: 1, textAlign: 'center' },
+  settingsButton: { alignItems: 'center', gap: 2, minWidth: 56 },
   sectionTitle: { marginTop: Spacing.six },
   buttonPressed: { opacity: 0.7 },
 });

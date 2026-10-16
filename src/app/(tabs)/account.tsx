@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import {
   assignDriver,
@@ -25,6 +26,7 @@ type VehicleGroup = { vehicle: Vehicle; drivers: VehicleDriverRow[] };
  * burada toplandı. Şoför karşılaştırma özelliği şimdilik kaldırıldı. */
 export default function AccountScreen() {
   const { profile, signOut } = useAuth();
+  const theme = useTheme();
   const isOwner = profile?.role === 'owner';
 
   const [groups, setGroups] = useState<VehicleGroup[]>([]);
@@ -181,8 +183,12 @@ export default function AccountScreen() {
           ) : (
             groups.map(({ vehicle, drivers }) => (
               <ThemedView key={vehicle.id} type="backgroundElement" style={styles.vehicleGroup}>
-                <Pressable onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
-                  <ThemedText type="smallBold">{vehicle.plate_no}</ThemedText>
+                <Pressable
+                  style={styles.plateRow}
+                  onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
+                  <ThemedText type="subtitle" style={styles.plateText}>
+                    {vehicle.plate_no}
+                  </ThemedText>
                 </Pressable>
 
                 {drivers.length === 0 ? (
@@ -191,8 +197,17 @@ export default function AccountScreen() {
                   </ThemedText>
                 ) : (
                   <ThemedView style={[styles.driverList, styles.transparentBg]}>
-                    {drivers.map((row) => (
-                      <ThemedView key={row.id} style={[styles.driverRow, styles.transparentBg]}>
+                    {drivers.map((row, index) => (
+                      <ThemedView
+                        key={row.id}
+                        style={[
+                          styles.driverRow,
+                          styles.transparentBg,
+                          index < drivers.length - 1 && {
+                            borderBottomWidth: StyleSheet.hairlineWidth,
+                            borderBottomColor: theme.backgroundSelected,
+                          },
+                        ]}>
                         <ThemedView style={[styles.driverInfo, styles.transparentBg]}>
                           <ThemedText type="small">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
                           <ThemedText type="small" themeColor="textSecondary">
@@ -267,9 +282,11 @@ const styles = StyleSheet.create({
   loading: { marginTop: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.two },
   vehicleGroup: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.two, marginTop: Spacing.two },
+  plateRow: { alignItems: 'center', paddingBottom: Spacing.one },
+  plateText: { textAlign: 'center' },
   noDrivers: { marginTop: Spacing.one },
   driverList: { gap: Spacing.two, marginTop: Spacing.one },
-  driverRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
   driverInfo: { flex: 1 },
   deleteButton: {
     width: 32,
