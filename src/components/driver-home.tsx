@@ -85,6 +85,7 @@ export function DriverHome() {
                   vehicle={item}
                   statusLabel={openByMe[item.id] ? 'Vardiyan Açık' : 'Vardiya Açmak İçin Dokun'}
                   statusActive={openByMe[item.id]}
+                  subLabel={openByMe[item.id] ? 'Kapatmak için dokun' : undefined}
                   cornerTimeLabel={corner?.label}
                   cornerTimeIso={corner?.iso}
                 />

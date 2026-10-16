@@ -1,26 +1,31 @@
-import { StyleSheet, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { StyleSheet } from 'react-native';
 
 import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
   vehicle: Vehicle;
-  /** "VARDİYA AÇIK" / "VARDİYA KAPALI" gibi durum yazısı. */
+  /** Durum başlığı, örn. "Vardiya Açık" / "Vardiya Kapalı" / "Vardiyan Açık". */
   statusLabel: string;
-  /** true ise statusLabel yeşil renkte gösterilir (vardiya açık anlaminda). */
+  /** true ise durum başlığı vurgulu (yeşil) renkte gösterilir. */
   statusActive?: boolean;
-  /** Durumun altına yazilan ikinci satir - örn. şoförün adı. */
+  /** Durum başlığının ALTINDA ayrı bir satırda gösterilir - şoför adı ya da bir ipucu metni (örn. "Kapatmak için dokun"). */
   subLabel?: string;
-  /** Köşeye not edilen saat etiketi: "Açılış" veya "Kapanış". */
-  cornerTimeLabel?: 'Açılış' | 'Kapanış';
-  /** Köşedeki saatin ISO zaman damgası. */
-  cornerTimeIso?: string;
+  /** true ise subLabel (şoför adı gibi önemli bir bilgi) koyu/siyah ve kalın yazılır; false/yoksa ipucu metni gibi soluk gri kalır. */
+  subLabelBold?: boolean;
+  /** Kartın köşesine küçük bir saat notu olarak yazılacak etiket: vardiya açıkken "Açılış", kapalıyken (son kapanan vardiya varsa) "Kapanış". */
+  cornerTimeLabel?: string;
+  /** Yukarıdaki etiketin yanına yazılacak zaman (ISO). Yoksa/null ise köşe notu hiç gösterilmez. */
+  cornerTimeIso?: string | null;
 };
 
-/** Bugunse sadece saat, degilse (1+ gun farkli) tarih + saat gosterir. */
+/** Saat damgasını küçük köşe notu için biçimlendirir - bugünse sadece saat
+ * ("18:45"), tarih atladıysa (dünkü/daha eski bir vardiyaysa) önüne gün.ay
+ * da eklenir ("30.09 18:45") ki hangi güne ait olduğu belli olsun. */
 function formatCornerTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
@@ -32,57 +37,89 @@ function formatCornerTime(iso: string): string {
   return `${date} ${time}`;
 }
 
-export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, cornerTimeLabel, cornerTimeIso }: Props) {
+/**
+ * Ana ekranlardaki (ev sahibi + şoför) araç kartı: plaka beyaz bir
+ * rozet/kutu OLMADAN, sadece yazı karakteri olarak gösterilir; sağa
+ * yaslanmış araç simgesinin hemen altında da küçük bir ödeme modeli
+ * rozeti (% / km) yer alır - SF Symbols'un araç simgesi kullanıldı.
+ * Durum başlığı (açık/kapalı) kalın+büyük harf+aralıklı bir "karakterle"
+ * gövde metninden ayrıştırılır; şoför adı/ipucu bunun ALTINDA ayrı bir
+ * satırda, açılış/kapanış saati ise kartın sağ üst köşesinde küçük bir
+ * not olarak gösterilir.
+ */
+export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subLabelBold, cornerTimeLabel, cornerTimeIso }: Props) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      {cornerTimeIso && cornerTimeLabel && (
-        <View style={styles.cornerBadge}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.cornerText}>
-            {cornerTimeLabel}: {formatCornerTime(cornerTimeIso)}
+      {cornerTimeIso ? (
+        <ThemedView style={[styles.openedAtBadge, styles.transparentBg]}>
+          <ThemedText type="small" style={styles.openedAtText}>
+            {cornerTimeLabel} {formatCornerTime(cornerTimeIso)}
           </ThemedText>
-        </View>
-      )}
-
-      <View style={styles.row}>
-        <View style={styles.leftColumn}>
-          <ThemedText type="smallBold" style={styles.plate}>
-            {vehicle.plate_no}
-          </ThemedText>
-          <ThemedText type="small" style={[styles.statusText, statusActive && styles.statusActiveText]}>
+        </ThemedView>
+      ) : null}
+      <ThemedView style={[styles.content, styles.transparentBg]}>
+        <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
+        <ThemedView style={styles.transparentBg}>
+          <ThemedText
+            themeColor={statusActive ? undefined : 'textSecondary'}
+            style={[styles.statusText, statusActive && styles.statusActiveText]}>
             {statusLabel}
           </ThemedText>
-          {subLabel && (
-            <ThemedText type="smallBold" style={styles.subLabel}>
+          {subLabel ? (
+            <ThemedText
+              type="small"
+              themeColor={subLabelBold ? undefined : 'textSecondary'}
+              style={[styles.subLabel, subLabelBold && styles.subLabelBold]}>
               {subLabel}
             </ThemedText>
-          )}
-        </View>
-
-        <View style={styles.rightColumn}>
-          <ThemedText style={styles.carIcon}>🚗</ThemedText>
-          <PaymentModelBadge vehicle={vehicle} compact />
-        </View>
-      </View>
+          ) : null}
+        </ThemedView>
+      </ThemedView>
+      <ThemedView style={[styles.rightColumn, styles.transparentBg]}>
+        <SymbolView
+          name="car.side.fill"
+          size={84}
+          tintColor={statusActive ? '#16A34A' : Brand.primary}
+          style={styles.carIcon}
+        />
+        <PaymentModelBadge vehicle={vehicle} compact />
+      </ThemedView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.three, borderRadius: Spacing.two },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  leftColumn: { flex: 1, gap: Spacing.half, paddingRight: Spacing.two },
-  plate: { fontSize: 18 },
-  cornerBadge: { position: 'absolute', top: Spacing.two, right: Spacing.three, zIndex: 1 },
-  cornerText: { fontSize: 11, fontWeight: '700' },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    minHeight: 148,
+    gap: Spacing.two,
+  },
+  content: { flex: 1, gap: Spacing.two, alignItems: 'flex-start' },
+  transparentBg: { backgroundColor: 'transparent' },
+  rightColumn: { alignItems: 'center', gap: 0 },
   statusText: {
-    marginTop: Spacing.one,
     fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     fontSize: 13,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   statusActiveText: { color: '#16A34A' },
   subLabel: { marginTop: Spacing.two },
-  rightColumn: { alignItems: 'center', gap: 0 },
-  carIcon: { fontSize: 32, marginBottom: -14 },
+  subLabelBold: { fontWeight: '800' },
+  openedAtBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.three,
+  },
+  openedAtText: { fontSize: 12, fontWeight: '800' },
+  plateText: {
+    fontWeight: '800',
+    fontSize: 20,
+    letterSpacing: 1,
+  },
+  carIcon: { marginBottom: -14 },
 });

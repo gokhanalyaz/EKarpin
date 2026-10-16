@@ -106,6 +106,7 @@ export function OwnerHome() {
                   statusLabel={s?.open ? 'Vardiya Açık' : 'Vardiya Kapalı'}
                   statusActive={s?.open}
                   subLabel={s?.driverName}
+                  subLabelBold
                   cornerTimeLabel={s?.cornerTimeLabel}
                   cornerTimeIso={s?.cornerTimeIso}
                 />
