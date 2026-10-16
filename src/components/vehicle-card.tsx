@@ -1,5 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { PaymentModelBadge } from '@/components/payment-model-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -35,35 +36,43 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, corn
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       {cornerTimeIso && cornerTimeLabel && (
-        <ThemedView style={styles.cornerBadge}>
+        <View style={styles.cornerBadge}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.cornerText}>
             {cornerTimeLabel}: {formatCornerTime(cornerTimeIso)}
           </ThemedText>
-        </ThemedView>
+        </View>
       )}
 
-      <ThemedText type="smallBold">{vehicle.plate_no}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {vehicle.payment_model === 'percentage'
-          ? `Yüzdelik sistem (%${vehicle.percentage_rate ?? 25})`
-          : `Km sistemi (${vehicle.km_rate ?? '-'} TL/km)`}
-      </ThemedText>
+      <View style={styles.row}>
+        <View style={styles.leftColumn}>
+          <ThemedText type="smallBold" style={styles.plate}>
+            {vehicle.plate_no}
+          </ThemedText>
+          <ThemedText type="small" style={[styles.statusText, statusActive && styles.statusActiveText]}>
+            {statusLabel}
+          </ThemedText>
+          {subLabel && (
+            <ThemedText type="smallBold" style={styles.subLabel}>
+              {subLabel}
+            </ThemedText>
+          )}
+        </View>
 
-      <ThemedText type="small" style={[styles.statusText, statusActive && styles.statusActiveText]}>
-        {statusLabel}
-      </ThemedText>
-      {subLabel && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.subLabel}>
-          {subLabel}
-        </ThemedText>
-      )}
+        <View style={styles.rightColumn}>
+          <ThemedText style={styles.carIcon}>🚗</ThemedText>
+          <PaymentModelBadge vehicle={vehicle} compact />
+        </View>
+      </View>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
-  cornerBadge: { position: 'absolute', top: Spacing.two, right: Spacing.three },
+  card: { padding: Spacing.three, borderRadius: Spacing.two },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  leftColumn: { flex: 1, gap: Spacing.half, paddingRight: Spacing.two },
+  plate: { fontSize: 18 },
+  cornerBadge: { position: 'absolute', top: Spacing.two, right: Spacing.three, zIndex: 1 },
   cornerText: { fontSize: 11, fontWeight: '700' },
   statusText: {
     marginTop: Spacing.one,
@@ -73,5 +82,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   statusActiveText: { color: '#16A34A' },
-  subLabel: { marginTop: 2 },
+  subLabel: { marginTop: Spacing.two },
+  rightColumn: { alignItems: 'center', gap: 0 },
+  carIcon: { fontSize: 32, marginBottom: -14 },
 });
