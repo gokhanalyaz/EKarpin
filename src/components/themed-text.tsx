@@ -1,3 +1,4 @@
+import { Children, type ReactNode } from 'react';
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, FontFamily, ThemeColor } from '@/constants/theme';
@@ -8,7 +9,20 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
-export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
+/**
+ * Türkçe'ye uygun büyük harf: iOS'un textTransform:'uppercase'i cihaz
+ * dilinden bağımsız çalıştığı için "i" harfini "I" yapıyordu (GIDER,
+ * SISTEMI, TARIH gibi). Burada i→İ, ı→I elle çevriliyor.
+ */
+export function trUpper(s: string): string {
+  return s.replace(/i/g, 'İ').replace(/ı/g, 'I').toUpperCase();
+}
+
+function upperChildren(children: ReactNode): ReactNode {
+  return Children.map(children, (c) => (typeof c === 'string' ? trUpper(c) : c));
+}
+
+export function ThemedText({ style, type = 'default', themeColor, children, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
   return (
@@ -26,8 +40,9 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'eyebrow' && styles.eyebrow,
         style,
       ]}
-      {...rest}
-    />
+      {...rest}>
+      {type === 'eyebrow' ? upperChildren(children) : children}
+    </Text>
   );
 }
 
@@ -64,7 +79,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     letterSpacing: 1.4,
-    textTransform: 'uppercase',
   },
   link: {
     fontFamily: FontFamily.body,

@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 
+import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
@@ -102,6 +103,7 @@ export default function MaintenanceScreen() {
   }
 
   return (
+    <SafeScreen>
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <ThemedText type="title" style={styles.title}>
         Araç Bakım
@@ -256,6 +258,7 @@ export default function MaintenanceScreen() {
         </>
       )}
     </ScrollView>
+    </SafeScreen>
   );
 }
 
@@ -271,9 +274,9 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  container: { padding: Spacing.four, paddingBottom: Spacing.six, gap: Spacing.two },
-  title: { marginBottom: Spacing.half },
-  subtitle: { marginBottom: Spacing.two },
+  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.two },
+  title: { marginBottom: Spacing.half, textAlign: 'center' },
+  subtitle: { marginBottom: Spacing.two, textAlign: 'center' },
   sectionTitle: { marginTop: Spacing.three },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, backgroundColor: 'transparent' },
   chip: {

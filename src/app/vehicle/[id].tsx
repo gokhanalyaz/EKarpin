@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 
-import { PaymentModelBadge } from '@/components/payment-model-badge';
+import { SafeScreen } from '@/components/safe-screen';
 import { ShiftHistoryList } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -47,6 +47,7 @@ export default function VehicleDetailScreen() {
   }
 
   return (
+    <SafeScreen>
     <ScrollView contentContainerStyle={styles.container}>
       <ThemedView style={[styles.titleRow, styles.transparentBg]}>
         <ThemedView style={[styles.settingsButton, styles.transparentBg]} />
@@ -63,23 +64,25 @@ export default function VehicleDetailScreen() {
           </ThemedText>
         </Pressable>
       </ThemedView>
-      <PaymentModelBadge vehicle={vehicle} />
 
-      <ThemedText type="eyebrow" style={styles.sectionTitle}>
-        Vardiya Geçmişi
-      </ThemedText>
-      <ShiftHistoryList vehicle={vehicle} showFilters />
+      {/* Çalışma sistemi rozeti burada tekrar gösterilmiyor (ana sayfadaki
+          araç kartında zaten görünüyor); vardiya geçmişi doğrudan başlığın
+          altında başlıyor. */}
+      <ThemedView style={[styles.historySection, styles.transparentBg]}>
+        <ShiftHistoryList vehicle={vehicle} showFilters title="Vardiya Geçmişi" />
+      </ThemedView>
     </ScrollView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
+  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   transparentBg: { backgroundColor: 'transparent' },
   title: { flex: 1, textAlign: 'center' },
   settingsButton: { alignItems: 'center', gap: 2, minWidth: 56 },
-  sectionTitle: { marginTop: Spacing.six },
+  historySection: { marginTop: Spacing.four },
   buttonPressed: { opacity: 0.7 },
 });

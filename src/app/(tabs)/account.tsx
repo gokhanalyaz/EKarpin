@@ -3,7 +3,9 @@ import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet } from 'react-native';
 
+import { GroupCard } from '@/components/grouped-list';
 import { PhoneInput } from '@/components/phone-input';
+import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
@@ -146,12 +148,13 @@ export default function AccountScreen() {
   }
 
   return (
+    <SafeScreen>
     <ScrollView contentContainerStyle={styles.container}>
-      <ThemedText type="subtitle" style={styles.header}>
+      <ThemedText type="title" style={styles.header}>
         Hesabım
       </ThemedText>
 
-      <ThemedView type="backgroundElement" style={styles.card}>
+      <GroupCard style={styles.card}>
         <ThemedText type="eyebrow" themeColor="textSecondary">
           Ad Soyad
         </ThemedText>
@@ -166,12 +169,12 @@ export default function AccountScreen() {
           Hesap Türü
         </ThemedText>
         <ThemedText type="smallBold">{profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}</ThemedText>
-      </ThemedView>
+      </GroupCard>
 
       {isOwner && (
         <>
-          <ThemedText type="eyebrow" themeColor="textSecondary" style={styles.sectionTitle}>
-            Araçlarım ve Şoförler
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Araçlar ve Şoförler
           </ThemedText>
 
           {loadingVehicles ? (
@@ -182,9 +185,9 @@ export default function AccountScreen() {
             </ThemedText>
           ) : (
             groups.map(({ vehicle, drivers }) => (
-              <ThemedView key={vehicle.id} type="backgroundElement" style={styles.vehicleGroup}>
+              <GroupCard key={vehicle.id} style={styles.vehicleGroup}>
                 <Pressable
-                  style={styles.plateRow}
+                  style={[styles.plateRow, { borderBottomColor: theme.separator }]}
                   onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
                   <ThemedText type="subtitle" style={styles.plateText}>
                     {vehicle.plate_no}
@@ -197,28 +200,23 @@ export default function AccountScreen() {
                   </ThemedText>
                 ) : (
                   <ThemedView style={[styles.driverList, styles.transparentBg]}>
-                    {drivers.map((row, index) => (
-                      <ThemedView
-                        key={row.id}
-                        style={[
-                          styles.driverRow,
-                          styles.transparentBg,
-                          index < drivers.length - 1 && {
-                            borderBottomWidth: StyleSheet.hairlineWidth,
-                            borderBottomColor: theme.backgroundSelected,
-                          },
-                        ]}>
+                    {drivers.map((row) => (
+                      <ThemedView key={row.id} style={[styles.driverRow, { backgroundColor: theme.subtleFill }]}>
+                        <SymbolView name="person.crop.circle.fill" size={30} tintColor={theme.textSecondary} />
                         <ThemedView style={[styles.driverInfo, styles.transparentBg]}>
-                          <ThemedText type="small">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
+                          <ThemedText type="smallBold">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
                           <ThemedText type="small" themeColor="textSecondary">
                             {row.driver?.phone ? `+${row.driver.phone}` : '-'}
                           </ThemedText>
                         </ThemedView>
                         <Pressable
-                          style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
+                          style={({ pressed }) => [styles.deleteAction, pressed && styles.deleteButtonPressed]}
                           onPress={() => handleDelete(vehicle.id, row)}
                           hitSlop={6}>
-                          <SymbolView name="trash" size={16} tintColor="#DC2626" />
+                          <ThemedView style={styles.deleteButton}>
+                            <SymbolView name="trash" size={16} tintColor="#DC2626" />
+                          </ThemedView>
+                          <ThemedText style={styles.deleteLabel}>Şoförü Sil</ThemedText>
                         </Pressable>
                       </ThemedView>
                     ))}
@@ -252,7 +250,7 @@ export default function AccountScreen() {
                     <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
                   </Pressable>
                 )}
-              </ThemedView>
+              </GroupCard>
             ))
           )}
         </>
@@ -264,6 +262,7 @@ export default function AccountScreen() {
         <ThemedText style={styles.signOutButtonText}>Çıkış Yap</ThemedText>
       </Pressable>
     </ScrollView>
+    </SafeScreen>
   );
 }
 
@@ -271,22 +270,30 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.six,
+    paddingTop: Spacing.three,
     paddingBottom: Spacing.six,
   },
-  header: { marginBottom: Spacing.three },
+  header: { marginBottom: Spacing.three, textAlign: 'center' },
   card: { padding: Spacing.four, gap: Spacing.half },
   fieldSpacing: { marginTop: Spacing.three },
   transparentBg: { backgroundColor: 'transparent' },
-  sectionTitle: { marginTop: Spacing.five, marginBottom: Spacing.one },
+  sectionTitle: { marginTop: Spacing.five, marginBottom: Spacing.one, textAlign: 'center' },
   loading: { marginTop: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.two },
-  vehicleGroup: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.two, marginTop: Spacing.two },
-  plateRow: { alignItems: 'center', paddingBottom: Spacing.one },
+  vehicleGroup: { padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.three },
+  plateRow: { alignItems: 'center', paddingBottom: Spacing.two, borderBottomWidth: StyleSheet.hairlineWidth },
   plateText: { textAlign: 'center' },
   noDrivers: { marginTop: Spacing.one },
   driverList: { gap: Spacing.two, marginTop: Spacing.one },
-  driverRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
+  // Her şoför kendi gri kutusunda - şoförler birbirinden net ayrılıyor.
+  driverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+  },
   driverInfo: { flex: 1 },
   deleteButton: {
     width: 32,
@@ -297,6 +304,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteButtonPressed: { opacity: 0.6 },
+  deleteAction: { alignItems: 'center', gap: 3 },
+  deleteLabel: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold, fontSize: 11, lineHeight: 13 },
   addForm: { gap: Spacing.two, marginTop: Spacing.two },
   addDriverButton: { alignItems: 'center', marginTop: Spacing.two, paddingVertical: Spacing.one },
   button: {

@@ -2,7 +2,7 @@ import { SymbolView } from 'expo-symbols';
 import { StyleSheet } from 'react-native';
 
 import { PaymentModelBadge } from '@/components/payment-model-badge';
-import { ThemedText } from '@/components/themed-text';
+import { ThemedText, trUpper } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import type { Vehicle } from '@/lib/vehicles';
@@ -63,7 +63,7 @@ export function VehicleCard({ vehicle, statusLabel, statusActive, subLabel, subL
           <ThemedText
             themeColor={statusActive ? undefined : 'textSecondary'}
             style={[styles.statusText, statusActive && styles.statusActiveText]}>
-            {statusLabel}
+            {trUpper(statusLabel)}
           </ThemedText>
           {subLabel ? (
             <ThemedText
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bodyBold,
     fontSize: 13,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
   statusActiveText: { color: '#16A34A' },
   subLabel: { marginTop: Spacing.two },

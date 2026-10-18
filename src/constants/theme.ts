@@ -17,6 +17,12 @@ export const Colors = {
     backgroundElement: '#FBF3DF',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    // Apple "Ayarlar" tarzı gruplu listeler için düz beyaz kart + ince
+    // ayırıcı çizgi (krem kartlar ayar/liste ekranlarında karışık duruyordu).
+    card: '#FFFFFF',
+    separator: '#E5E5EA',
+    // Kart içindeki alt öğeleri (örn. her şoför satırı) ayırmak için hafif gri.
+    subtleFill: '#F4F4F6',
   },
   dark: {
     text: '#ffffff',
@@ -24,6 +30,9 @@ export const Colors = {
     backgroundElement: '#241F14',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    card: '#1C1C1E',
+    separator: '#38383A',
+    subtleFill: '#2C2C2E',
   },
 } as const;
 

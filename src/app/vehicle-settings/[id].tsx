@@ -9,10 +9,14 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   TextInput,
 } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 
 import { ActionSheetModal } from '@/components/action-sheet-modal';
+import { GroupCard, GroupFooter, GroupRow } from '@/components/grouped-list';
+import { SafeScreen } from '@/components/safe-screen';
 import { formatDateTime } from '@/components/shift-history-list';
 import { PhoneInput } from '@/components/phone-input';
 import { ThemedText } from '@/components/themed-text';
@@ -55,6 +59,7 @@ export default function VehicleSettingsScreen() {
   const [kmRateInput, setKmRateInput] = useState('');
   const [savingPaymentModel, setSavingPaymentModel] = useState(false);
   const [hasOpenShift, setHasOpenShift] = useState(false);
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
 
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
@@ -128,6 +133,16 @@ export default function VehicleSettingsScreen() {
     }
   }
 
+  function openPaymentSheet() {
+    if (!vehicle) return;
+    // Pencere her açıldığında aracın kayıtlı değerleriyle başlasın
+    // (önceden yarım bırakılan bir seçim kalmasın).
+    setPaymentModelChoice(vehicle.payment_model);
+    setPercentageRateInput(vehicle.percentage_rate != null ? String(vehicle.percentage_rate) : '25');
+    setKmRateInput(vehicle.km_rate != null ? String(vehicle.km_rate) : '');
+    setShowPaymentSheet(true);
+  }
+
   async function handleSavePaymentModel() {
     if (!vehicle) return;
     if (hasOpenShift) {
@@ -164,6 +179,7 @@ export default function VehicleSettingsScreen() {
         kmRate,
       });
       await load();
+      setShowPaymentSheet(false);
       Alert.alert('Kaydedildi', 'Çalışma sistemi güncellendi. Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler.');
     } catch (e: any) {
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
@@ -269,14 +285,6 @@ export default function VehicleSettingsScreen() {
 
   // --- Karpin gorus suresi akisi ---
 
-  function openVisibilityFlow() {
-    if (drivers.length === 1) {
-      pickVisibilityDriver(drivers[0]);
-    } else {
-      setVisibilityStep('pickDriver');
-    }
-  }
-
   function pickVisibilityDriver(row: VehicleDriverRow) {
     setVisibilityTarget(row);
     setVisibilityCustomInput(row.shift_visibility_days != null ? String(row.shift_visibility_days) : '');
@@ -365,8 +373,13 @@ export default function VehicleSettingsScreen() {
   }
 
   const keys = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
+  const paymentSummary =
+    vehicle.payment_model === 'percentage'
+      ? `Yüzdelik · Şoför payı %${vehicle.percentage_rate ?? 25}`
+      : `Km Sistemi · ${vehicle.km_rate != null ? `${vehicle.km_rate} ₺/km` : 'ücret girilmedi'}`;
 
   return (
+    <SafeScreen>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         contentContainerStyle={styles.container}
@@ -379,20 +392,175 @@ export default function VehicleSettingsScreen() {
           {vehicle.plate_no}
         </ThemedText>
 
+        {/* Çalışma sistemi artık ekranın en üstünde açık durmuyor; tek bir
+            satır olarak duruyor, dokununca değiştirme penceresi açılıyor. */}
         <ThemedText type="eyebrow" style={styles.firstSectionTitle}>
-          Çalışma Sistemi
+          Araç
         </ThemedText>
-        {hasOpenShift ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            Bu aracın şu an açık bir vardiyası var. Çalışma sistemini değiştirebilmek için önce
-            vardiyanın kapatılması gerekiyor.
-          </ThemedText>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler - geçmiş karpinler
-            kayıt edildikleri sistemde görünmeye devam eder.
-          </ThemedText>
+        <GroupCard>
+          <GroupRow
+            title="Çalışma Sistemini Değiştir"
+            subtitle={paymentSummary}
+            chevron
+            divider={false}
+            onPress={openPaymentSheet}
+          />
+        </GroupCard>
+
+        <ThemedText type="eyebrow" style={styles.sectionTitle}>
+          Gider Kategorileri
+        </ThemedText>
+        <GroupCard>
+          {EXPENSE_CATEGORIES.map((cat, index) => (
+            <GroupRow
+              key={cat.key}
+              title={cat.label}
+              divider={index < EXPENSE_CATEGORIES.length - 1}
+              right={
+                <Switch
+                  value={keys.includes(cat.key)}
+                  onValueChange={() => handleToggleExpenseCategory(cat.key)}
+                  trackColor={{ true: Brand.primary, false: theme.backgroundSelected }}
+                  ios_backgroundColor={theme.backgroundSelected}
+                />
+              }
+            />
+          ))}
+        </GroupCard>
+        <GroupFooter>Açık olan kalemler, şoför vardiya kapatırken masraf olarak seçebileceği seçeneklerde görünür.</GroupFooter>
+
+        <ThemedText type="eyebrow" style={styles.sectionTitle}>
+          Şoförler
+        </ThemedText>
+        <GroupCard>
+          {drivers.length === 0 ? (
+            <ThemedView style={[styles.driverRow, styles.transparentBg, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator }]}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Henüz şoför eklenmedi.
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            drivers.map((item) => (
+              <ThemedView
+                key={item.id}
+                style={[
+                  styles.driverRow,
+                  styles.transparentBg,
+                  { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator },
+                ]}>
+                <ThemedView style={styles.driverCardHeader}>
+                  <ThemedView style={[{ flex: 1 }, styles.transparentBg]}>
+                    <ThemedText type="smallBold" style={styles.driverName}>
+                      {item.driver?.full_name ?? 'İsimsiz'}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {item.driver?.phone ? `+${item.driver.phone}` : '-'}
+                    </ThemedText>
+                  </ThemedView>
+                  <ThemedView style={[styles.driverCardActions, styles.transparentBg]}>
+                    <Pressable
+                      onPress={() => openShiftPicker(item, false)}
+                      hitSlop={8}
+                      style={({ pressed }) => [styles.driverAction, pressed && styles.pressed]}>
+                      <SymbolView name="doc.text.magnifyingglass" size={18} tintColor={theme.textSecondary} />
+                      <ThemedText type="small" themeColor="textSecondary" style={styles.driverActionLabel}>
+                        Karpin Sil
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setRemoveTarget(item)}
+                      hitSlop={8}
+                      style={({ pressed }) => [styles.driverAction, pressed && styles.pressed]}>
+                      <SymbolView name="person.badge.minus" size={18} tintColor="#DC2626" />
+                      <ThemedText type="small" style={[styles.driverActionLabel, styles.removeText]}>
+                        Kaldır
+                      </ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                </ThemedView>
+                {vehicle.payment_model === 'km_based' && (
+                  <ThemedView style={styles.inlineRow}>
+                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+                      Günlük Km Düşüm Hakkı
+                    </ThemedText>
+                    <TextInput
+                      style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
+                      placeholder="Yok"
+                      placeholderTextColor={theme.textSecondary}
+                      keyboardType="number-pad"
+                      value={limitInputs[item.id] ?? ''}
+                      onChangeText={(v) => setLimitInputs((prev) => ({ ...prev, [item.id]: v }))}
+                    />
+                    <Pressable
+                      style={({ pressed }) => [styles.smallSaveButton, pressed && styles.pressed]}
+                      onPress={() => handleSaveLimit(item)}
+                      disabled={savingLimitFor === item.id}>
+                      <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
+                        {savingLimitFor === item.id ? '...' : 'Kaydet'}
+                      </ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                )}
+              </ThemedView>
+            ))
+          )}
+          <Pressable
+            style={({ pressed }) => [styles.addDriverRow, pressed && styles.pressed]}
+            onPress={() => setShowAddDriver((v) => !v)}>
+            <ThemedText type="linkPrimary">{showAddDriver ? 'Vazgeç' : '+ Şoför Ekle'}</ThemedText>
+          </Pressable>
+        </GroupCard>
+
+        {showAddDriver && (
+          <>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+              Şoförün önce uygulamaya &quot;Şoför&quot; olarak kayıt olmuş olması gerekir.
+            </ThemedText>
+            <PhoneInput value={phone} onChangeText={setPhone} />
+            <Pressable
+              style={({ pressed }) => [styles.button, (assigning || pressed) && styles.pressed]}
+              onPress={handleAssign}
+              disabled={assigning}>
+              <ThemedText style={styles.buttonText}>{assigning ? 'Ekleniyor...' : 'Şoför Ekle'}</ThemedText>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]} onPress={handleInvite}>
+              <ThemedText type="linkPrimary">Şoförü davet et (link gönder)</ThemedText>
+            </Pressable>
+          </>
         )}
+
+        <ThemedText type="eyebrow" style={styles.sectionTitle}>
+          Karpin Görüş Süresi
+        </ThemedText>
+        <GroupCard>
+          {drivers.length === 0 ? (
+            <GroupRow title="Önce şoför ekle" divider={false} />
+          ) : (
+            drivers.map((row, index) => (
+              <GroupRow
+                key={row.id}
+                title={row.driver?.full_name ?? 'İsimsiz'}
+                value={row.shift_visibility_days != null ? `${row.shift_visibility_days} gün` : 'Sınırsız'}
+                chevron
+                divider={index < drivers.length - 1}
+                onPress={() => pickVisibilityDriver(row)}
+              />
+            ))
+          )}
+        </GroupCard>
+        <GroupFooter>Şoför kendi panelinde bu aracın karpinlerini kaç gün görsün? Değiştirmek için şoföre dokun.</GroupFooter>
+      </ScrollView>
+
+      {/* Çalışma sistemini değiştir */}
+      <ActionSheetModal
+        visible={showPaymentSheet}
+        onClose={() => setShowPaymentSheet(false)}
+        title="Çalışma Sistemini Değiştir"
+        description={
+          hasOpenShift
+            ? 'Bu aracın şu an açık bir vardiyası var. Çalışma sistemini değiştirebilmek için önce vardiyanın kapatılması gerekiyor.'
+            : 'Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler - geçmiş karpinler kayıt edildikleri sistemde görünmeye devam eder.'
+        }>
         <ThemedView style={[styles.roleRow, styles.transparentBg]}>
           <Pressable
             disabled={hasOpenShift}
@@ -421,7 +589,7 @@ export default function VehicleSettingsScreen() {
             </ThemedText>
           </Pressable>
         </ThemedView>
-        <ThemedView style={[styles.inlineRow, { marginTop: Spacing.three }]}>
+        <ThemedView style={[styles.inlineRow, styles.transparentBg]}>
           <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
             {paymentModelChoice === 'percentage' ? 'Şoför Payı (%)' : 'Km Başına Ücret (₺)'}
           </ThemedText>
@@ -439,150 +607,19 @@ export default function VehicleSettingsScreen() {
           disabled={hasOpenShift || savingPaymentModel}
           style={({ pressed }) => [
             styles.button,
-            styles.paymentModelSaveButton,
             (hasOpenShift || savingPaymentModel || pressed) && styles.pressed,
           ]}
           onPress={handleSavePaymentModel}>
           <ThemedText style={styles.buttonText}>
-            {savingPaymentModel ? 'Kaydediliyor...' : 'Çalışma Sistemini Kaydet'}
+            {savingPaymentModel ? 'Kaydediliyor...' : 'Kaydet'}
           </ThemedText>
         </Pressable>
-
-        <ThemedText type="eyebrow" style={styles.sectionTitle}>
-          Gider Kategorileri
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Şoför vardiya kapatırken hangi masraf kalemlerini görsün? (Yüzdelik veya km sistemi fark
-          etmez, tüm araçlarda geçerlidir.)
-        </ThemedText>
-        <ThemedView style={styles.chipRow}>
-          {EXPENSE_CATEGORIES.map((cat) => {
-            const enabled = keys.includes(cat.key);
-            return (
-              <Pressable
-                key={cat.key}
-                onPress={() => handleToggleExpenseCategory(cat.key)}
-                style={[styles.chip, { borderColor: theme.backgroundSelected }, enabled && styles.chipOn]}>
-                <ThemedText type="small" style={enabled ? styles.chipTextOn : undefined}>
-                  {enabled ? '✓ ' : ''}
-                  {cat.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </ThemedView>
-
-        <ThemedText type="eyebrow" style={styles.sectionTitle}>
-          Şoförler
-        </ThemedText>
-        {drivers.length === 0 ? (
+        <Pressable style={styles.sheetCancelButton} onPress={() => setShowPaymentSheet(false)}>
           <ThemedText type="small" themeColor="textSecondary">
-            Henüz şoför eklenmedi.
+            Vazgeç
           </ThemedText>
-        ) : (
-          <ThemedView style={styles.list}>
-            {drivers.map((item) => (
-              <ThemedView key={item.id} type="backgroundElement" style={styles.driverCard}>
-                <ThemedView style={styles.driverCardHeader}>
-                  <ThemedText type="smallBold">{item.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-                  <ThemedView style={[styles.driverCardActions, styles.transparentBg]}>
-                    <Pressable onPress={() => openShiftPicker(item, false)} hitSlop={8}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        Karpin Sil
-                      </ThemedText>
-                    </Pressable>
-                    <Pressable onPress={() => setRemoveTarget(item)} hitSlop={8}>
-                      <ThemedText type="small" style={styles.removeText}>
-                        Kaldır
-                      </ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                </ThemedView>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.driver?.phone ? `+${item.driver.phone}` : '-'}
-                </ThemedText>
-                {vehicle.payment_model === 'km_based' && (
-                  <ThemedView style={styles.inlineRow}>
-                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-                      Günlük Km Düşüm Hakkı
-                    </ThemedText>
-                    <TextInput
-                      style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
-                      placeholder="Yok"
-                      placeholderTextColor={theme.textSecondary}
-                      keyboardType="number-pad"
-                      value={limitInputs[item.id] ?? ''}
-                      onChangeText={(v) => setLimitInputs((prev) => ({ ...prev, [item.id]: v }))}
-                    />
-                    <Pressable
-                      style={({ pressed }) => [styles.smallSaveButton, pressed && styles.pressed]}
-                      onPress={() => handleSaveLimit(item)}
-                      disabled={savingLimitFor === item.id}>
-                      <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
-                        {savingLimitFor === item.id ? '...' : 'Kaydet'}
-                      </ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                )}
-              </ThemedView>
-            ))}
-          </ThemedView>
-        )}
-
-        <ThemedText type="eyebrow" style={styles.sectionTitle}>
-          Karpin Görüş Süresi
-        </ThemedText>
-        {drivers.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            Önce şoför ekle.
-          </ThemedText>
-        ) : (
-          <ThemedView style={[styles.visibilityList, styles.transparentBg]}>
-            {drivers.map((row) => (
-              <Pressable key={row.id} onPress={() => pickVisibilityDriver(row)} style={styles.visibilityRow}>
-                <ThemedText type="small">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {row.shift_visibility_days != null ? `${row.shift_visibility_days} gün` : 'Sınırsız'}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </ThemedView>
-        )}
-        <Pressable style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]} onPress={openVisibilityFlow}>
-          <ThemedText type="linkPrimary">+ Karpin Görüş Süresi Ekle</ThemedText>
         </Pressable>
-
-        {showAddDriver ? (
-          <>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              Şoförün önce uygulamaya &quot;Şoför&quot; olarak kayıt olmuş olması gerekir.
-            </ThemedText>
-            <PhoneInput value={phone} onChangeText={setPhone} />
-            <Pressable
-              style={({ pressed }) => [styles.button, (assigning || pressed) && styles.pressed]}
-              onPress={handleAssign}
-              disabled={assigning}>
-              <ThemedText style={styles.buttonText}>{assigning ? 'Ekleniyor...' : 'Şoför Ekle'}</ThemedText>
-            </Pressable>
-            <Pressable style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]} onPress={handleInvite}>
-              <ThemedText type="linkPrimary">Şoförü davet et (link gönder)</ThemedText>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
-              onPress={() => setShowAddDriver(false)}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Vazgeç
-              </ThemedText>
-            </Pressable>
-          </>
-        ) : (
-          <Pressable
-            style={({ pressed }) => [styles.addDriverButton, pressed && styles.pressed]}
-            onPress={() => setShowAddDriver(true)}>
-            <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
-          </Pressable>
-        )}
-      </ScrollView>
+      </ActionSheetModal>
 
       {/* Şoförü kaldır: karpinler ne olsun? */}
       <ActionSheetModal
@@ -666,23 +703,7 @@ export default function VehicleSettingsScreen() {
         </Pressable>
       </ActionSheetModal>
 
-      {/* Karpin gorus suresi: 1) hangi sofor 2) kac gun */}
-      <ActionSheetModal
-        visible={visibilityStep === 'pickDriver'}
-        onClose={() => setVisibilityStep('closed')}
-        title="Hangi Şoför İçin?">
-        {drivers.map((row) => (
-          <Pressable key={row.id} style={styles.sheetButton} onPress={() => pickVisibilityDriver(row)}>
-            <ThemedText type="smallBold">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-          </Pressable>
-        ))}
-        <Pressable style={styles.sheetCancelButton} onPress={() => setVisibilityStep('closed')}>
-          <ThemedText type="small" themeColor="textSecondary">
-            Vazgeç
-          </ThemedText>
-        </Pressable>
-      </ActionSheetModal>
-
+      {/* Karpin görüş süresi: kaç gün */}
       <ActionSheetModal
         visible={visibilityStep === 'pickDays'}
         onClose={() => setVisibilityStep('closed')}
@@ -729,18 +750,19 @@ export default function VehicleSettingsScreen() {
         </Pressable>
       </ActionSheetModal>
     </KeyboardAvoidingView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.six, gap: Spacing.two },
-  title: { marginBottom: Spacing.one },
-  plate: { marginBottom: Spacing.two },
-  firstSectionTitle: {},
-  sectionTitle: { marginTop: Spacing.five },
+  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.two },
+  title: { marginBottom: Spacing.one, textAlign: 'center' },
+  plate: { marginBottom: Spacing.two, textAlign: 'center' },
+  firstSectionTitle: { marginTop: Spacing.two, paddingHorizontal: Spacing.three },
+  sectionTitle: { marginTop: Spacing.four, paddingHorizontal: Spacing.three },
   transparentBg: { backgroundColor: 'transparent' },
-  roleRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
+  roleRow: { flexDirection: 'row', gap: Spacing.two },
   roleButton: {
     flex: 1,
     borderWidth: 1,
@@ -751,11 +773,6 @@ const styles = StyleSheet.create({
   roleButtonActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
   roleButtonDisabled: { opacity: 0.5 },
   roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
-  paymentModelSaveButton: { marginTop: Spacing.three, marginBottom: Spacing.two },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.three, backgroundColor: 'transparent' },
-  chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999, borderWidth: 1 },
-  chipOn: { backgroundColor: '#2563EB1F', borderColor: '#2563EB' },
-  chipTextOn: { color: '#1D4ED8', fontFamily: FontFamily.bodyBold },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   smallInput: {
     borderWidth: 1.5,
@@ -768,22 +785,14 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   smallSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
-  list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
-  driverCard: { padding: Spacing.three, gap: Spacing.half },
+  driverRow: { paddingHorizontal: Spacing.three, paddingVertical: 14, gap: Spacing.one },
+  driverName: { fontSize: 16 },
   driverCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
   driverCardActions: { flexDirection: 'row', gap: Spacing.three },
+  driverAction: { alignItems: 'center', gap: 2, minWidth: 52 },
+  driverActionLabel: { fontSize: 11, lineHeight: 14 },
+  addDriverRow: { alignItems: 'center', paddingVertical: 14 },
   removeText: { color: '#DC2626' },
-  visibilityList: { gap: Spacing.half, marginTop: Spacing.two },
-  visibilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderWidth: 1,
-    borderColor: '#94A3B833',
-    borderRadius: Spacing.two,
-  },
   hint: { marginTop: Spacing.two, marginBottom: Spacing.one },
   button: {
     backgroundColor: Brand.primary,
@@ -793,7 +802,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   linkButton: { alignItems: 'center', marginTop: Spacing.three },
-  addDriverButton: { alignItems: 'center', marginTop: Spacing.four, paddingVertical: Spacing.two },
   pressed: { opacity: 0.7 },
   buttonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
   sheetButton: {

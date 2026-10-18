@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { ActionSheetIOS, ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet } from 'react-native';
 
 import { DateTimeRangePicker, type DateTimeRange } from '@/components/date-time-range-picker';
 import { PhotoViewButton } from '@/components/photo-view-button';
@@ -27,6 +28,9 @@ type Props = {
   vehicle: Vehicle;
   /** true ise tarih araligi + teslim durumu filtreleri ve ozet kutusu da gosterilir (su an arac detay sayfasinda kullaniliyor). */
   showFilters?: boolean;
+  /** Verilirse listenin üstünde bölüm başlığı gösterilir; araç sahibi için
+   * başlığın sağında "İndir" (Excel/PDF) simgesi de çıkar. */
+  title?: string;
 };
 
 export function formatDateTime(iso: string): string {
@@ -304,8 +308,9 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
   );
 }
 
-export function ShiftHistoryList({ vehicle, showFilters }: Props) {
+export function ShiftHistoryList({ vehicle, showFilters, title }: Props) {
   const { profile } = useAuth();
+  const theme = useTheme();
   const isOwner = profile?.role === 'owner';
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [driverNames, setDriverNames] = useState<Record<string, string>>({});
@@ -431,18 +436,75 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
     }
   }
 
-  if (loading) return null;
+  // Tek "İndir" simgesi: basınca hangi formatta indirileceği soruluyor
+  // (Excel / PDF) - iki ayrı buton yerine daha sade ve anlaşılır.
+  function handleDownloadPress() {
+    if (exporting) return;
+    if (visibleShifts.length === 0) {
+      Alert.alert('Karpin yok', 'Bu filtreye uyan karpin bulunamadı.');
+      return;
+    }
+    const message = `${visibleShifts.length} karpin · ${describeRange(preset, customRange)}`;
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Karpinleri İndir',
+          message,
+          options: ['Excel olarak indir', 'PDF olarak indir', 'Vazgeç'],
+          cancelButtonIndex: 2,
+        },
+        (index) => {
+          if (index === 0) handleExport('excel');
+          else if (index === 1) handleExport('pdf');
+        }
+      );
+    } else {
+      Alert.alert('Karpinleri İndir', message, [
+        { text: 'Excel', onPress: () => handleExport('excel') },
+        { text: 'PDF', onPress: () => handleExport('pdf') },
+        { text: 'Vazgeç', style: 'cancel' },
+      ]);
+    }
+  }
+
+  const header = title ? (
+    <ThemedView style={[styles.headerRow, styles.transparentBg]}>
+      <ThemedText type="eyebrow">{title}</ThemedText>
+      {isOwner && showFilters && shifts.length > 0 ? (
+        <Pressable
+          hitSlop={10}
+          disabled={!!exporting}
+          onPress={handleDownloadPress}
+          style={({ pressed }) => [styles.downloadButton, pressed && styles.buttonPressed]}>
+          {exporting ? (
+            <ActivityIndicator size="small" />
+          ) : (
+            <SymbolView name="square.and.arrow.down" size={20} tintColor={theme.text} />
+          )}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.downloadLabel}>
+            İndir
+          </ThemedText>
+        </Pressable>
+      ) : null}
+    </ThemedView>
+  ) : null;
+
+  if (loading) return header;
 
   if (shifts.length === 0) {
     return (
-      <ThemedText type="small" themeColor="textSecondary">
-        Henüz kapanmış vardiya yok.
-      </ThemedText>
+      <>
+        {header}
+        <ThemedText type="small" themeColor="textSecondary">
+          Henüz kapanmış vardiya yok.
+        </ThemedText>
+      </>
     );
   }
 
   return (
     <ThemedView style={[styles.list, styles.transparentBg]}>
+      {header}
       {showFilters && (
         <>
           <ThemedView style={[styles.filterChipRow, styles.transparentBg]}>
@@ -500,30 +562,6 @@ export function ShiftHistoryList({ vehicle, showFilters }: Props) {
               {settlementTotals.doneTotal.toFixed(2)} ₺
             </ThemedText>
           </ThemedView>
-          {isOwner && (
-            <ThemedView style={[styles.exportRow, styles.transparentBg]}>
-              <Pressable
-                style={({ pressed }) => [styles.exportButton, (pressed || exporting === 'pdf') && styles.buttonPressed]}
-                disabled={!!exporting}
-                onPress={() => handleExport('excel')}>
-                {exporting === 'excel' ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <ThemedText type="smallBold">📊 Excel'e Aktar</ThemedText>
-                )}
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.exportButton, (pressed || exporting === 'excel') && styles.buttonPressed]}
-                disabled={!!exporting}
-                onPress={() => handleExport('pdf')}>
-                {exporting === 'pdf' ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <ThemedText type="smallBold">📄 PDF'e Aktar</ThemedText>
-                )}
-              </Pressable>
-            </ThemedView>
-          )}
         </>
       )}
 
@@ -624,15 +662,9 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Brand.primary, borderColor: Brand.primary, borderWidth: 0 },
   filterChipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   summaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
-  exportRow: { flexDirection: 'row', gap: Spacing.two },
-  exportButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#94A3B8',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  downloadButton: { alignItems: 'center', minWidth: 48, gap: 2 },
+  downloadLabel: { fontSize: 12, lineHeight: 14 },
   batchButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,

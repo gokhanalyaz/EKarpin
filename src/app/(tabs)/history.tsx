@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { DateRangePicker, type DateRange } from '@/components/date-range-picker';
+import { SafeScreen } from '@/components/safe-screen';
 import { ShiftHistoryCard, type SettlementInfo } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -227,6 +228,7 @@ export default function HistoryScreen() {
   }, [vehiclesLoading, load]);
 
   return (
+    <SafeScreen>
     <ScrollView
       ref={scrollRef}
       contentContainerStyle={styles.container}
@@ -311,20 +313,6 @@ export default function HistoryScreen() {
         />
       )}
 
-      {isOwner && kmDiscountSummary.total > 0 && (
-        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
-          <ThemedText type="smallBold">Km Düşümü</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Toplam düşülen: {kmDiscountSummary.total} km
-          </ThemedText>
-          {kmDiscountSummary.rows.map((row) => (
-            <ThemedText key={row.driverId} type="small" themeColor="textSecondary">
-              {row.name}: {row.kmSum} km
-            </ThemedText>
-          ))}
-        </ThemedView>
-      )}
-
       <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Teslim Durumu
       </ThemedText>
@@ -352,6 +340,22 @@ export default function HistoryScreen() {
             {isOwner ? 'Teslim alınan' : 'Teslim ettiğim'}: {settlementTotals.doneCount} karpin ·{' '}
             {settlementTotals.doneTotal.toFixed(2)} ₺
           </ThemedText>
+        </ThemedView>
+      )}
+
+      {/* Km düşümü genel listede gösterilmiyor; sadece belirli bir araç veya
+          şoför seçilip filtre yapıldığında görünüyor. */}
+      {isOwner && (selectedVehicleId !== null || selectedDriverId !== null) && kmDiscountSummary.total > 0 && (
+        <ThemedView type="backgroundElement" style={styles.kmSummaryBox}>
+          <ThemedText type="smallBold">Km Düşümü</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Toplam düşülen: {kmDiscountSummary.total} km
+          </ThemedText>
+          {kmDiscountSummary.rows.map((row) => (
+            <ThemedText key={row.driverId} type="small" themeColor="textSecondary">
+              {row.name}: {row.kmSum} km
+            </ThemedText>
+          ))}
         </ThemedView>
       )}
 
@@ -394,6 +398,7 @@ export default function HistoryScreen() {
         </ThemedView>
       )}
     </ScrollView>
+    </SafeScreen>
   );
 }
 
@@ -408,9 +413,9 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.four, gap: Spacing.two, paddingBottom: Spacing.six },
-  title: { marginBottom: Spacing.two },
-  sectionTitle: { marginTop: Spacing.three },
+  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
+  title: { marginBottom: Spacing.one, textAlign: 'center' },
+  sectionTitle: { marginTop: Spacing.two },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, backgroundColor: 'transparent' },
   chip: {
     borderWidth: 1,
@@ -425,7 +430,7 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   loading: { marginTop: Spacing.four },
   list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
-  kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.three },
+  kmSummaryBox: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half, marginTop: Spacing.two },
   batchButton: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,
