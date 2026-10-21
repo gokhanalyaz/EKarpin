@@ -1,4 +1,6 @@
+import { getSuggestedOpeningKm } from '@/lib/shifts';
 import { supabase } from '@/lib/supabase';
+import type { Vehicle } from '@/lib/vehicles';
 
 export type MaintenanceLog = {
   id: string;
@@ -60,9 +62,30 @@ export async function addMaintenanceLog(input: {
   return data as MaintenanceLog;
 }
 
-export async function deleteMaintenanceLog(id: string): Promise<void> {
-  const { error } = await supabase.from('vehicle_maintenance_logs').delete().eq('id', id);
+/** Hatalı girilmiş bir bakım kaydını düzeltir (tür, km, hatırlatma aralığı, not). */
+export async function updateMaintenanceLog(
+  id: string,
+  input: { type: string; kmAtService: number; intervalKm?: number | null; note?: string | null }
+): Promise<MaintenanceLog> {
+  const { data, error } = await supabase
+    .from('vehicle_maintenance_logs')
+    .update({
+      type: input.type,
+      km_at_service: input.kmAtService,
+      interval_km: input.intervalKm ?? null,
+      note: input.note?.trim() || null,
+    })
+    .eq('id', id)
+    .select()
+    .single();
   if (error) throw error;
+  return data as MaintenanceLog;
+}
+
+export async function deleteMaintenanceLog(id: string): Promise<void> {
+  const { data, error } = await supabase.from('vehicle_maintenance_logs').delete().eq('id', id).select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Bakım kaydı silinemedi.');
 }
 
 export type MaintenanceStatus = {
@@ -87,6 +110,30 @@ export function getMaintenanceStatus(log: MaintenanceLog, currentKm: number | nu
     dueSoon: remainingKm <= log.reminder_buffer_km && remainingKm > 0,
     overdue: remainingKm <= 0,
   };
+}
+
+export type MaintenanceReminder = { vehicle: Vehicle; status: MaintenanceStatus };
+
+/**
+ * Bildirimler ekranı ve ana sayfadaki zil için: verilen araçlarda sırası
+ * yaklaşan veya geçmiş bakımları döner. Her bakım türünün sadece en son
+ * kaydına bakılır - yani bakım yapılıp yeni kayıt girildiğinde ya da kayıt
+ * düzenlendiğinde/silindiğinde hatırlatma kendiliğinden güncellenir.
+ */
+export async function listMaintenanceReminders(vehicles: Vehicle[]): Promise<MaintenanceReminder[]> {
+  const perVehicle = await Promise.all(
+    vehicles.map(async (vehicle) => {
+      const [logs, km] = await Promise.all([
+        listMaintenanceLogs(vehicle.id).catch(() => [] as MaintenanceLog[]),
+        getSuggestedOpeningKm(vehicle.id).catch(() => null),
+      ]);
+      return latestByType(logs)
+        .map((log) => getMaintenanceStatus(log, km))
+        .filter((status) => status.dueSoon || status.overdue)
+        .map((status) => ({ vehicle, status }));
+    })
+  );
+  return perVehicle.flat().sort((a, b) => (a.status.remainingKm ?? 0) - (b.status.remainingKm ?? 0));
 }
 
 /** Her bakim turu (type) icin en son kaydi döner (o turun en guncel durumu). */

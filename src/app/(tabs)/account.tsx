@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet } from 'react-native';
 
 import { GroupCard } from '@/components/grouped-list';
@@ -12,6 +12,7 @@ import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
+import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/theme-preference';
 import {
   assignDriver,
   findDriverByPhone,
@@ -22,6 +23,12 @@ import {
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 type VehicleGroup = { vehicle: Vehicle; drivers: VehicleDriverRow[] };
+
+const THEME_OPTIONS: { key: ThemePreference; label: string; icon: string }[] = [
+  { key: 'system', label: 'Otomatik', icon: 'circle.lefthalf.filled' },
+  { key: 'light', label: 'Gündüz', icon: 'sun.max.fill' },
+  { key: 'dark', label: 'Gece', icon: 'moon.fill' },
+];
 
 /** Hesabım sekmesi: profil bilgisi + (araç sahibiyse) araçlar ve her aracın
  * şoför yönetimi burada - artık ayrı bir "Şoförler" sekmesi yok, hepsi
@@ -36,6 +43,16 @@ export default function AccountScreen() {
   const [addingForVehicle, setAddingForVehicle] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [themePref, setThemePref] = useState<ThemePreference>('system');
+
+  useEffect(() => {
+    getThemePreference().then(setThemePref);
+  }, []);
+
+  function handleThemeChange(pref: ThemePreference) {
+    setThemePref(pref);
+    setThemePreference(pref);
+  }
 
   const loadVehicles = useCallback(async () => {
     if (!profile || !isOwner) {
@@ -171,6 +188,30 @@ export default function AccountScreen() {
         <ThemedText type="smallBold">{profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}</ThemedText>
       </GroupCard>
 
+      {/* Gece / gündüz modu */}
+      <ThemedText type="eyebrow" style={styles.appearanceTitle}>
+        Görünüm
+      </ThemedText>
+      <GroupCard style={styles.themeCard}>
+        {THEME_OPTIONS.map((opt) => {
+          const active = themePref === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => handleThemeChange(opt.key)}
+              style={[styles.themeOption, active && styles.themeOptionActive]}>
+              <SymbolView name={opt.icon as any} size={20} tintColor={active ? Brand.onPrimary : theme.textSecondary} />
+              <ThemedText type="small" style={active ? styles.themeOptionTextActive : undefined}>
+                {opt.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </GroupCard>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.themeHint}>
+        Otomatik: telefonun kendi gece/gündüz ayarına uyar.
+      </ThemedText>
+
       {isOwner && (
         <>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -276,6 +317,12 @@ const styles = StyleSheet.create({
   header: { marginBottom: Spacing.three, textAlign: 'center' },
   card: { padding: Spacing.four, gap: Spacing.half },
   fieldSpacing: { marginTop: Spacing.three },
+  appearanceTitle: { marginTop: Spacing.four, paddingHorizontal: Spacing.three },
+  themeCard: { flexDirection: 'row', padding: Spacing.one, gap: Spacing.one },
+  themeOption: { flex: 1, alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.two, borderRadius: 10 },
+  themeOptionActive: { backgroundColor: Brand.primary },
+  themeOptionTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
+  themeHint: { marginTop: Spacing.one, paddingHorizontal: Spacing.three, fontSize: 13 },
   transparentBg: { backgroundColor: 'transparent' },
   sectionTitle: { marginTop: Spacing.five, marginBottom: Spacing.one, textAlign: 'center' },
   loading: { marginTop: Spacing.two },

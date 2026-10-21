@@ -1,23 +1,25 @@
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 
+import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
-import { createVehicle, type PaymentModel } from '@/lib/vehicles';
+import { createVehicle, deleteVehicle, uploadVehicleRegistration, type PaymentModel } from '@/lib/vehicles';
 
 /**
- * TODO (ileride yapılacak - henüz başlanmadı, ayrı bir oturumda ele alınacak):
- * Ticari araç eklerken ruhsat (taşıt belgesi) fotoğrafı istenip OCR ile
- * plaka otomatik okunacak; plaka "35T" ile başlamıyorsa araç eklenmeyecek.
- * Plaka ruhsattan otomatik alınacağı için kullanıcı elle yazmayacak.
- * Ruhsat + sonrasında sigorta vb. tüm araç belgeleri kayıt altına alınıp
- * araç sahibi (admin) istediği an bu belgelere ulaşabilecek. Bunun için:
- * yeni bir "vehicle_documents" tablosu/bucket, bir OCR servisi (örn. bir
- * cloud OCR API'si) ve bu ekranın önüne bir "Ruhsat Ekle" adımı gerekiyor.
+ * Araç ekleme: ruhsat fotoğrafı ZORUNLU (çekilmeden/seçilmeden araç
+ * eklenemez). Fotoğraf 'vehicle-documents' depolamasına, sadece araç
+ * sahibinin görebileceği şekilde yüklenir. Yükleme başarısız olursa araç
+ * kaydı geri alınır - ruhsatsız araç kalmasın.
+ *
+ * İleride (henüz yapılmadı): ruhsattan plakanın otomatik okunması (OCR),
+ * "35T" ile başlamayan plakaların reddedilmesi, sigorta vb. diğer belgeler.
  */
 export default function AddVehicleScreen() {
   const theme = useTheme();
@@ -27,6 +29,22 @@ export default function AddVehicleScreen() {
   const [percentageRate, setPercentageRate] = useState('25');
   const [kmRate, setKmRate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [registrationUri, setRegistrationUri] = useState<string | null>(null);
+
+  async function takeRegistrationPhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Kamera izni gerekli', 'Ruhsatın fotoğrafını çekebilmek için kamera izni vermelisin.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: false });
+    if (!result.canceled && result.assets[0]) setRegistrationUri(result.assets[0].uri);
+  }
+
+  async function pickRegistrationPhoto() {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (!result.canceled && result.assets[0]) setRegistrationUri(result.assets[0].uri);
+  }
 
   async function handleSave() {
     if (!profile) return;
@@ -39,10 +57,14 @@ export default function AddVehicleScreen() {
       Alert.alert('Eksik bilgi', 'Km başına ücret girin.');
       return;
     }
+    if (!registrationUri) {
+      Alert.alert('Ruhsat gerekli', 'Aracı ekleyebilmek için ruhsatın fotoğrafını çekmen ya da galeriden seçmen gerekiyor.');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await createVehicle({
+      const vehicle = await createVehicle({
         ownerId: profile.id,
         plateNo,
         paymentModel,
@@ -50,6 +72,13 @@ export default function AddVehicleScreen() {
           paymentModel === 'percentage' ? Number(percentageRate.replace(',', '.')) : undefined,
         kmRate: paymentModel === 'km_based' ? Number(kmRate.replace(',', '.')) : undefined,
       });
+      try {
+        await uploadVehicleRegistration(vehicle.id, registrationUri);
+      } catch (uploadError) {
+        // Ruhsat yüklenemediyse aracı da geri al (ruhsatsız araç kalmasın).
+        await deleteVehicle(vehicle.id).catch(() => {});
+        throw uploadError;
+      }
       router.back();
     } catch (e: any) {
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
@@ -59,11 +88,42 @@ export default function AddVehicleScreen() {
   }
 
   return (
+    <SafeScreen>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ThemedView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <ThemedText type="title" style={styles.title}>
           Araç Ekle
         </ThemedText>
+
+        <ThemedText type="smallBold">Ruhsat Fotoğrafı (zorunlu)</ThemedText>
+        {registrationUri ? (
+          <ThemedView style={styles.transparentBg}>
+            <Image source={{ uri: registrationUri }} style={styles.registrationPreview} resizeMode="cover" />
+            <ThemedView style={[styles.photoActions, styles.transparentBg]}>
+              <Pressable onPress={takeRegistrationPhoto} hitSlop={8}>
+                <ThemedText type="linkPrimary">Yeniden Çek</ThemedText>
+              </Pressable>
+              <Pressable onPress={pickRegistrationPhoto} hitSlop={8}>
+                <ThemedText type="linkPrimary">Galeriden Değiştir</ThemedText>
+              </Pressable>
+            </ThemedView>
+          </ThemedView>
+        ) : (
+          <ThemedView style={[styles.photoButtonsRow, styles.transparentBg]}>
+            <Pressable
+              style={({ pressed }) => [styles.photoButton, { borderColor: theme.backgroundSelected }, pressed && styles.buttonPressed]}
+              onPress={takeRegistrationPhoto}>
+              <SymbolView name="camera.fill" size={26} tintColor={theme.text} />
+              <ThemedText type="smallBold">Fotoğraf Çek</ThemedText>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.photoButton, { borderColor: theme.backgroundSelected }, pressed && styles.buttonPressed]}
+              onPress={pickRegistrationPhoto}>
+              <SymbolView name="photo.on.rectangle" size={26} tintColor={theme.text} />
+              <ThemedText type="smallBold">Galeriden Seç</ThemedText>
+            </Pressable>
+          </ThemedView>
+        )}
 
         <TextInput
           style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -128,14 +188,28 @@ export default function AddVehicleScreen() {
             {submitting ? 'Kaydediliyor...' : 'Kaydet'}
           </ThemedText>
         </Pressable>
-      </ThemedView>
+      </ScrollView>
     </KeyboardAvoidingView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: Spacing.four, paddingTop: Spacing.six, gap: Spacing.three },
-  title: { marginBottom: Spacing.two },
+  container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.three },
+  title: { marginBottom: Spacing.two, textAlign: 'center' },
+  transparentBg: { backgroundColor: 'transparent' },
+  photoButtonsRow: { flexDirection: 'row', gap: Spacing.two },
+  photoButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  registrationPreview: { width: '100%', height: 190, borderRadius: Spacing.three },
+  photoActions: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.five, marginTop: Spacing.two },
   input: {
     borderWidth: 1,
     borderRadius: Spacing.two,

@@ -1,4 +1,5 @@
 import { useFocusEffect } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 
@@ -11,10 +12,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { getSuggestedOpeningKm } from '@/lib/shifts';
 import {
   addMaintenanceLog,
+  deleteMaintenanceLog,
   getMaintenanceStatus,
   listMaintenanceLogs,
   maintenanceTypeLabel,
   MAINTENANCE_TYPES,
+  updateMaintenanceLog,
   type MaintenanceLog,
 } from '@/lib/vehicle-maintenance';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
@@ -30,6 +33,8 @@ export default function MaintenanceScreen() {
   const [loading, setLoading] = useState(true);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  // Düzenlenen bakım kaydının id'si (null = yeni kayıt ekleniyor).
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState<string>(MAINTENANCE_TYPES[0].key);
   const [kmInput, setKmInput] = useState('');
   const [intervalInput, setIntervalInput] = useState('');
@@ -82,24 +87,126 @@ export default function MaintenanceScreen() {
     }
     setSaving(true);
     try {
-      await addMaintenanceLog({
-        vehicleId: selectedVehicleId,
-        createdBy: profile.id,
-        type,
-        kmAtService: km,
-        intervalKm: interval,
-        note: noteInput,
-      });
-      setKmInput('');
-      setIntervalInput('');
-      setNoteInput('');
-      setShowAddForm(false);
+      if (editingId) {
+        await updateMaintenanceLog(editingId, { type, kmAtService: km, intervalKm: interval, note: noteInput });
+      } else {
+        await addMaintenanceLog({
+          vehicleId: selectedVehicleId,
+          createdBy: profile.id,
+          type,
+          kmAtService: km,
+          intervalKm: interval,
+          note: noteInput,
+        });
+      }
+      closeForm();
       await load();
     } catch (e: any) {
       Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
     } finally {
       setSaving(false);
     }
+  }
+
+  function closeForm() {
+    setKmInput('');
+    setIntervalInput('');
+    setNoteInput('');
+    setType(MAINTENANCE_TYPES[0].key);
+    setEditingId(null);
+    setShowAddForm(false);
+  }
+
+  function handleEdit(log: MaintenanceLog) {
+    setShowAddForm(false);
+    setEditingId(log.id);
+    setType(log.type);
+    setKmInput(String(log.km_at_service));
+    setIntervalInput(log.interval_km != null ? String(log.interval_km) : '');
+    setNoteInput(log.note ?? '');
+  }
+
+  function handleDelete(log: MaintenanceLog) {
+    Alert.alert(
+      'Bakım Kaydını Sil',
+      `${maintenanceTypeLabel(log.type)} (${log.km_at_service} km) kaydı silinecek. Bu kayda bağlı hatırlatma da kalkar. Devam edilsin mi?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMaintenanceLog(log.id);
+              if (editingId === log.id) closeForm();
+              await load();
+            } catch (e: any) {
+              Alert.alert('Silinemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function renderForm() {
+    return (
+      <ThemedView style={styles.addForm}>
+        <ThemedText type="smallBold" style={styles.sectionTitle}>
+          {editingId ? 'Bakım Kaydını Düzenle' : 'Yeni Bakım Kaydı'}
+        </ThemedText>
+        <ThemedView style={styles.chipRow}>
+          {MAINTENANCE_TYPES.map((t) => (
+            <Chip key={t.key} label={t.label} active={type === t.key} onPress={() => setType(t.key)} />
+          ))}
+        </ThemedView>
+        <ThemedText type="small" themeColor="textSecondary">
+          Km (bu bakımın yapıldığı km)
+        </ThemedText>
+        <TextInput
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          placeholder={currentKm != null ? String(currentKm) : 'Örn: 125000'}
+          placeholderTextColor={theme.textSecondary}
+          keyboardType="number-pad"
+          value={kmInput}
+          onChangeText={setKmInput}
+        />
+        <ThemedText type="small" themeColor="textSecondary">
+          Kaç km sonra hatırlat? (boş bırakabilirsin)
+        </ThemedText>
+        <TextInput
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          placeholder="Örn: 10000"
+          placeholderTextColor={theme.textSecondary}
+          keyboardType="number-pad"
+          value={intervalInput}
+          onChangeText={setIntervalInput}
+        />
+        <ThemedText type="small" themeColor="textSecondary">
+          Not (opsiyonel)
+        </ThemedText>
+        <TextInput
+          style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
+          placeholder="Örn: Ön lastikler değişti"
+          placeholderTextColor={theme.textSecondary}
+          value={noteInput}
+          onChangeText={setNoteInput}
+        />
+        <Pressable
+          style={({ pressed }) => [styles.button, (saving || pressed) && styles.buttonPressed]}
+          onPress={handleSave}
+          disabled={saving}>
+          <ThemedText style={styles.buttonText}>
+            {saving ? 'Kaydediliyor...' : editingId ? 'Değişiklikleri Kaydet' : 'Kaydet'}
+          </ThemedText>
+        </Pressable>
+        <Pressable style={styles.linkButton} onPress={closeForm}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Vazgeç
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
   }
 
   return (
@@ -121,7 +228,7 @@ export default function MaintenanceScreen() {
             key={v.id}
             label={v.plate_no}
             active={selectedVehicleId === v.id}
-            onPress={() => setSelectedVehicleId(v.id)}
+            onPress={() => { closeForm(); setSelectedVehicleId(v.id); }}
           />
         ))}
       </ThemedView>
@@ -152,6 +259,9 @@ export default function MaintenanceScreen() {
             <ThemedView style={styles.list}>
               {logs.map((log) => {
                 const status = getMaintenanceStatus(log, currentKm);
+                if (editingId === log.id) {
+                  return <ThemedView key={log.id} style={styles.transparentBg}>{renderForm()}</ThemedView>;
+                }
                 return (
                   <ThemedView key={log.id} type="backgroundElement" style={styles.logCard}>
                     <ThemedView style={styles.logHeader}>
@@ -185,6 +295,24 @@ export default function MaintenanceScreen() {
                             : `Sırada: ${status.nextDueKm} km'de (${status.remainingKm?.toFixed(0)} km kaldı).`}
                       </ThemedText>
                     )}
+                    <ThemedView style={styles.logActions}>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={() => handleEdit(log)}
+                        style={({ pressed }) => [styles.logAction, pressed && styles.buttonPressed]}>
+                        <SymbolView name="pencil" size={15} tintColor={theme.text} />
+                        <ThemedText type="smallBold">Düzenle</ThemedText>
+                      </Pressable>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={() => handleDelete(log)}
+                        style={({ pressed }) => [styles.logAction, pressed && styles.buttonPressed]}>
+                        <SymbolView name="trash" size={15} tintColor="#DC2626" />
+                        <ThemedText type="smallBold" style={styles.deleteText}>
+                          Sil
+                        </ThemedText>
+                      </Pressable>
+                    </ThemedView>
                   </ThemedView>
                 );
               })}
@@ -192,63 +320,12 @@ export default function MaintenanceScreen() {
           )}
 
           {showAddForm ? (
-            <ThemedView style={styles.addForm}>
-              <ThemedText type="smallBold" style={styles.sectionTitle}>
-                Yeni Bakım Kaydı
-              </ThemedText>
-              <ThemedView style={styles.chipRow}>
-                {MAINTENANCE_TYPES.map((t) => (
-                  <Chip key={t.key} label={t.label} active={type === t.key} onPress={() => setType(t.key)} />
-                ))}
-              </ThemedView>
-              <ThemedText type="small" themeColor="textSecondary">
-                Km (bu bakımın yapıldığı km)
-              </ThemedText>
-              <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                placeholder={currentKm != null ? String(currentKm) : 'Örn: 125000'}
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={kmInput}
-                onChangeText={setKmInput}
-              />
-              <ThemedText type="small" themeColor="textSecondary">
-                Kaç km sonra hatırlat? (boş bırakabilirsin)
-              </ThemedText>
-              <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                placeholder="Örn: 10000"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={intervalInput}
-                onChangeText={setIntervalInput}
-              />
-              <ThemedText type="small" themeColor="textSecondary">
-                Not (opsiyonel)
-              </ThemedText>
-              <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                placeholder="Örn: Ön lastikler değişti"
-                placeholderTextColor={theme.textSecondary}
-                value={noteInput}
-                onChangeText={setNoteInput}
-              />
-              <Pressable
-                style={({ pressed }) => [styles.button, (saving || pressed) && styles.buttonPressed]}
-                onPress={handleSave}
-                disabled={saving}>
-                <ThemedText style={styles.buttonText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</ThemedText>
-              </Pressable>
-              <Pressable style={styles.linkButton} onPress={() => setShowAddForm(false)}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Vazgeç
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
+            renderForm()
           ) : (
             <Pressable
               style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}
               onPress={() => {
+                closeForm();
                 setKmInput(currentKm != null ? String(currentKm) : '');
                 setShowAddForm(true);
               }}>
@@ -294,6 +371,16 @@ const styles = StyleSheet.create({
   list: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },
   logCard: { padding: Spacing.three, borderRadius: Spacing.two, gap: Spacing.half },
   logHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
+  logActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.four,
+    marginTop: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  logAction: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  deleteText: { color: '#DC2626' },
+  transparentBg: { backgroundColor: 'transparent' },
   dueSoonText: { color: '#B45309', fontWeight: '700' },
   overdueText: { color: '#DC2626', fontWeight: '700' },
   addForm: { gap: Spacing.two, marginTop: Spacing.two, backgroundColor: 'transparent' },

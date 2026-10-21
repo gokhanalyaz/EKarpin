@@ -1,3 +1,5 @@
+import { File } from 'expo-file-system';
+
 import { supabase } from '@/lib/supabase';
 
 export type PaymentModel = 'percentage' | 'km_based';
@@ -12,6 +14,8 @@ export type Vehicle = {
   created_at: string;
   enabled_expense_categories: string[] | null;
   expected_revenue_per_km: number | null;
+  /** Ruhsat fotoğrafının 'vehicle-documents' depolamasındaki yolu. */
+  registration_photo_path?: string | null;
 };
 
 export function paymentModelLabel(
@@ -54,6 +58,33 @@ export async function createVehicle(input: {
 
   if (error) throw error;
   return data as Vehicle;
+}
+
+/**
+ * Ruhsat fotoğrafını yükler ve aracın kaydına bağlar. Dosya yolu
+ * <aracId>/ruhsat-<zaman>.jpg - sadece aracın sahibi görebilir.
+ */
+export async function uploadVehicleRegistration(vehicleId: string, uri: string): Promise<string> {
+  const file = new File(uri);
+  if (!file.exists) throw new Error('Ruhsat fotoğrafı bulunamadı, tekrar çekmeyi dene.');
+  const arrayBuffer = await file.arrayBuffer();
+  if (!arrayBuffer || arrayBuffer.byteLength === 0) throw new Error('Ruhsat fotoğrafı okunamadı.');
+
+  const path = `${vehicleId}/ruhsat-${Date.now()}.jpg`;
+  const { error: uploadError } = await supabase.storage
+    .from('vehicle-documents')
+    .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
+  if (uploadError) throw new Error(`Ruhsat yüklenemedi: ${uploadError.message}`);
+
+  const { error } = await supabase.from('vehicles').update({ registration_photo_path: path }).eq('id', vehicleId);
+  if (error) throw error;
+  return path;
+}
+
+/** Ruhsat yüklenemezse yarım kalan araç kaydını geri almak için. */
+export async function deleteVehicle(vehicleId: string): Promise<void> {
+  const { error } = await supabase.from('vehicles').delete().eq('id', vehicleId);
+  if (error) throw error;
 }
 
 type VehicleDriverRow = { vehicle: Vehicle | null };

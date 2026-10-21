@@ -42,7 +42,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Vardiya açılış/kapanış km sayacı fotoğrafı çekebilmek için kameraya erişim gerekiyor."
+          "cameraPermission": "Km sayacı, fiş ve araç ruhsatı fotoğrafı çekebilmek için kameraya erişim gerekiyor.",
+          "photosPermission": "Ruhsat ve fiş fotoğraflarını galeriden seçebilmek için fotoğraflara erişim gerekiyor."
         }
       ]
     ],

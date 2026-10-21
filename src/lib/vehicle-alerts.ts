@@ -83,6 +83,12 @@ export async function listOwnerVehicleAlerts(vehicleIds: string[], limit = 50): 
 
 /** Araç sahibi bildirimi gördükten sonra listesinden kalıcı olarak kaldırır. */
 export async function deleteVehicleAlert(alertId: string): Promise<void> {
-  const { error } = await supabase.from('vehicle_alerts').delete().eq('id', alertId);
+  // .select() ile silinen satırı geri istiyoruz: veritabanı izni yoksa
+  // Supabase hata vermeden 0 satır siler - o zaman "silindi" sanılıp
+  // bildirim sayfa yenilenince geri geliyordu. Artık bunu yakalıyoruz.
+  const { data, error } = await supabase.from('vehicle_alerts').delete().eq('id', alertId).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Bildirim silinemedi (silme yetkisi yok). Lütfen destek ile iletişime geç.');
+  }
 }
