@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/contexts/auth-context';
 import { deleteVehicleAlert, listOwnerVehicleAlerts, type VehicleAlert } from '@/lib/vehicle-alerts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
-import { listMaintenanceReminders, maintenanceTypeLabel, type MaintenanceReminder } from '@/lib/vehicle-maintenance';
+import { listMaintenanceReminders, type MaintenanceReminder } from '@/lib/vehicle-maintenance';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 /** Bildirimler artık alt menüde ayrı sekme değil; ana sayfadaki zil
@@ -93,19 +93,17 @@ export default function NotificationsScreen() {
     reminders.length > 0 ? (
       <ThemedView style={[styles.reminderSection, styles.transparentBg]}>
         <ThemedText type="eyebrow">Bakım Hatırlatmaları</ThemedText>
-        {reminders.map(({ vehicle, status }) => (
-          <Pressable key={status.log.id} onPress={() => router.navigate('/maintenance')}>
+        {reminders.map((reminder) => (
+          <Pressable key={reminder.key} onPress={() => router.navigate('/maintenance')}>
             <ThemedView
               type="backgroundElement"
-              style={[styles.card, { borderLeftColor: status.overdue ? '#DC2626' : '#D97706' }]}>
+              style={[styles.card, { borderLeftColor: reminder.overdue ? '#DC2626' : '#D97706' }]}>
               <ThemedText type="eyebrow" themeColor="textSecondary">
-                {vehicle.plate_no}
+                {reminder.vehicle.plate_no}
               </ThemedText>
-              <ThemedText type="smallBold">{maintenanceTypeLabel(status.log.type)}</ThemedText>
-              <ThemedText type="small" style={{ color: status.overdue ? '#DC2626' : '#B45309' }}>
-                {status.overdue
-                  ? `Süresi geçti - ${status.nextDueKm} km'de yapılması gerekiyordu (${Math.abs(status.remainingKm ?? 0).toFixed(0)} km geçti).`
-                  : `Yaklaşıyor - ${status.remainingKm?.toFixed(0)} km sonra (${status.nextDueKm} km'de).`}
+              <ThemedText type="smallBold">{reminder.title}</ThemedText>
+              <ThemedText type="small" style={{ color: reminder.overdue ? '#DC2626' : '#B45309' }}>
+                {reminder.message}
               </ThemedText>
             </ThemedView>
           </Pressable>
@@ -133,7 +131,7 @@ export default function NotificationsScreen() {
       {loading ? (
         <ActivityIndicator style={styles.loadingIndicator} />
       ) : (
-      <FlatList
+      <FlatList showsVerticalScrollIndicator={false}
         data={alerts}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={reminderHeader}

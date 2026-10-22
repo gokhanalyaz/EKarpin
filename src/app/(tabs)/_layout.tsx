@@ -62,7 +62,7 @@ export default function TabsLayout() {
         options={{
           title: 'Destek',
           tabBarIcon: ({ focused, color, size }) => (
-            <SymbolView name={focused ? 'lifepreserver.fill' : 'lifepreserver'} size={size} tintColor={color} />
+            <SymbolView name={focused ? 'bubble.left.and.text.bubble.right.fill' : 'bubble.left.and.text.bubble.right'} size={size} tintColor={color} />
           ),
         }}
       />

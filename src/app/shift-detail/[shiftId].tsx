@@ -127,7 +127,7 @@ export default function ShiftDetailScreen() {
   return (
     <ThemedView style={styles.screen}>
       {headerBar}
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         <ThemedText type="title" style={styles.title}>
           {vehicle.plate_no}
         </ThemedText>

@@ -229,7 +229,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeScreen>
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       ref={scrollRef}
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled">

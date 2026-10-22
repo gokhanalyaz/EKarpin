@@ -1,8 +1,9 @@
 import { Children, type ReactNode } from 'react';
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { Fonts, FontFamily, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTextScaleFactor } from '@/lib/text-scale';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code' | 'eyebrow';
@@ -24,10 +25,9 @@ function upperChildren(children: ReactNode): ReactNode {
 
 export function ThemedText({ style, type = 'default', themeColor, children, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const scale = useTextScaleFactor();
 
-  return (
-    <Text
-      style={[
+  const flat: TextStyle = StyleSheet.flatten([
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
@@ -39,7 +39,20 @@ export function ThemedText({ style, type = 'default', themeColor, children, ...r
         type === 'code' && styles.code,
         type === 'eyebrow' && styles.eyebrow,
         style,
-      ]}
+      ]);
+  // Hesabım > Görünüm'deki "Yazı Boyutu" seçimine göre punto büyütülür.
+  const scaled =
+    scale === 1
+      ? flat
+      : {
+          ...flat,
+          ...(typeof flat.fontSize === 'number' ? { fontSize: flat.fontSize * scale } : null),
+          ...(typeof flat.lineHeight === 'number' ? { lineHeight: flat.lineHeight * scale } : null),
+        };
+
+  return (
+    <Text
+      style={scaled}
       {...rest}>
       {type === 'eyebrow' ? upperChildren(children) : children}
     </Text>

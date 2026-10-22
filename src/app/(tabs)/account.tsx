@@ -1,9 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text } from 'react-native';
 
-import { GroupCard } from '@/components/grouped-list';
+import { ActionSheetModal } from '@/components/action-sheet-modal';
+import { GroupCard, GroupRow } from '@/components/grouped-list';
 import { PhoneInput } from '@/components/phone-input';
 import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -12,6 +13,13 @@ import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { formatPhoneWithPrefix } from '@/lib/format';
+import {
+  setTextScale,
+  TEXT_SCALE_FACTORS,
+  TEXT_SCALE_LABELS,
+  useTextScale,
+  type TextScale,
+} from '@/lib/text-scale';
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/theme-preference';
 import {
   assignDriver,
@@ -44,6 +52,8 @@ export default function AccountScreen() {
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [themePref, setThemePref] = useState<ThemePreference>('system');
+  const [showAppearance, setShowAppearance] = useState(false);
+  const textScale = useTextScale();
 
   useEffect(() => {
     getThemePreference().then(setThemePref);
@@ -166,7 +176,7 @@ export default function AccountScreen() {
 
   return (
     <SafeScreen>
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <ThemedText type="title" style={styles.header}>
         Hesabım
       </ThemedText>
@@ -188,29 +198,16 @@ export default function AccountScreen() {
         <ThemedText type="smallBold">{profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}</ThemedText>
       </GroupCard>
 
-      {/* Gece / gündüz modu */}
-      <ThemedText type="eyebrow" style={styles.appearanceTitle}>
-        Görünüm
-      </ThemedText>
-      <GroupCard style={styles.themeCard}>
-        {THEME_OPTIONS.map((opt) => {
-          const active = themePref === opt.key;
-          return (
-            <Pressable
-              key={opt.key}
-              onPress={() => handleThemeChange(opt.key)}
-              style={[styles.themeOption, active && styles.themeOptionActive]}>
-              <SymbolView name={opt.icon as any} size={20} tintColor={active ? Brand.onPrimary : theme.textSecondary} />
-              <ThemedText type="small" style={active ? styles.themeOptionTextActive : undefined}>
-                {opt.label}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
+      {/* Görünüm: gece/gündüz + yazı boyutu tek, sade bir satırda */}
+      <GroupCard style={styles.appearanceCard}>
+        <GroupRow
+          title="Görünüm ve Yazı Boyutu"
+          value={`${THEME_OPTIONS.find((o) => o.key === themePref)?.label} · ${TEXT_SCALE_LABELS[textScale]}`}
+          chevron
+          divider={false}
+          onPress={() => setShowAppearance(true)}
+        />
       </GroupCard>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.themeHint}>
-        Otomatik: telefonun kendi gece/gündüz ayarına uyar.
-      </ThemedText>
 
       {isOwner && (
         <>
@@ -303,6 +300,60 @@ export default function AccountScreen() {
         <ThemedText style={styles.signOutButtonText}>Çıkış Yap</ThemedText>
       </Pressable>
     </ScrollView>
+
+    <ActionSheetModal visible={showAppearance} onClose={() => setShowAppearance(false)} title="Görünüm">
+      <ThemedText type="eyebrow" style={styles.sheetLabel}>
+        Tema
+      </ThemedText>
+      <ThemedView style={[styles.segment, { backgroundColor: theme.subtleFill }]}>
+        {THEME_OPTIONS.map((opt) => {
+          const active = themePref === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => handleThemeChange(opt.key)}
+              style={[styles.segmentOption, active && { backgroundColor: theme.card }]}>
+              <SymbolView name={opt.icon as any} size={18} tintColor={active ? theme.text : theme.textSecondary} />
+              <ThemedText type={active ? 'smallBold' : 'small'} themeColor={active ? 'text' : 'textSecondary'}>
+                {opt.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.sheetHint}>
+        Otomatik: telefonun kendi gece/gündüz ayarına uyar.
+      </ThemedText>
+
+      <ThemedText type="eyebrow" style={styles.sheetLabel}>
+        Yazı Boyutu
+      </ThemedText>
+      <ThemedView style={[styles.segment, { backgroundColor: theme.subtleFill }]}>
+        {(Object.keys(TEXT_SCALE_LABELS) as TextScale[]).map((key) => {
+          const active = textScale === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setTextScale(key)}
+              style={[styles.segmentOption, active && { backgroundColor: theme.card }]}>
+              <Text
+                style={[
+                  styles.sizeSample,
+                  { fontSize: 16 * TEXT_SCALE_FACTORS[key], color: active ? theme.text : theme.textSecondary },
+                ]}>
+                Aa
+              </Text>
+              <ThemedText type={active ? 'smallBold' : 'small'} themeColor={active ? 'text' : 'textSecondary'}>
+                {TEXT_SCALE_LABELS[key]}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.sheetHint}>
+        Uygulamadaki yazılar seçtiğin boyutta görünür.
+      </ThemedText>
+    </ActionSheetModal>
     </SafeScreen>
   );
 }
@@ -317,12 +368,12 @@ const styles = StyleSheet.create({
   header: { marginBottom: Spacing.three, textAlign: 'center' },
   card: { padding: Spacing.four, gap: Spacing.half },
   fieldSpacing: { marginTop: Spacing.three },
-  appearanceTitle: { marginTop: Spacing.four, paddingHorizontal: Spacing.three },
-  themeCard: { flexDirection: 'row', padding: Spacing.one, gap: Spacing.one },
-  themeOption: { flex: 1, alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.two, borderRadius: 10 },
-  themeOptionActive: { backgroundColor: Brand.primary },
-  themeOptionTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
-  themeHint: { marginTop: Spacing.one, paddingHorizontal: Spacing.three, fontSize: 13 },
+  appearanceCard: { marginTop: Spacing.three },
+  sheetLabel: { marginTop: Spacing.two },
+  segment: { flexDirection: 'row', padding: 3, borderRadius: 12, gap: 3 },
+  segmentOption: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: Spacing.two, borderRadius: 10 },
+  sizeSample: { fontFamily: FontFamily.bodyBold },
+  sheetHint: { fontSize: 13, lineHeight: 18 },
   transparentBg: { backgroundColor: 'transparent' },
   sectionTitle: { marginTop: Spacing.five, marginBottom: Spacing.one, textAlign: 'center' },
   loading: { marginTop: Spacing.two },

@@ -16,7 +16,46 @@ export type Vehicle = {
   expected_revenue_per_km: number | null;
   /** Ruhsat fotoğrafının 'vehicle-documents' depolamasındaki yolu. */
   registration_photo_path?: string | null;
+  /** Vize bitiş tarihi (YYYY-MM-DD). */
+  inspection_due_date?: string | null;
+  /** Vizeden kaç gün önce hatırlatma başlasın (varsayılan 10). */
+  inspection_notice_days?: number | null;
+  /** Bakım/vize hatırlatmaları o an araca ekli şoförlere de gitsin mi. */
+  maintenance_notify_drivers?: boolean | null;
 };
+
+/** 'YYYY-MM-DD' -> yerel saatle Date (saat dilimi kaymasın diye elle). */
+export function parseDateOnly(value: string): Date {
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Date -> 'YYYY-MM-DD' (yerel gün). */
+export function formatDateOnly(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Vize tarihini ve kaç gün önceden hatırlatılacağını kaydeder (tarih null = vize takibi yok). */
+export async function setVehicleInspection(
+  vehicleId: string,
+  dueDate: string | null,
+  noticeDays: number
+): Promise<void> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ inspection_due_date: dueDate, inspection_notice_days: noticeDays })
+    .eq('id', vehicleId);
+  if (error) throw error;
+}
+
+/** Bakım/vize hatırlatmalarının şoförlere de gidip gitmeyeceğini ayarlar. */
+export async function setMaintenanceNotifyDrivers(vehicleId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.from('vehicles').update({ maintenance_notify_drivers: enabled }).eq('id', vehicleId);
+  if (error) throw error;
+}
 
 export function paymentModelLabel(
   vehicle: Pick<Vehicle, 'payment_model' | 'percentage_rate' | 'km_rate'>

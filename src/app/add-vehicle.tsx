@@ -90,7 +90,7 @@ export default function AddVehicleScreen() {
   return (
     <SafeScreen>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <ThemedText type="title" style={styles.title}>
           Araç Ekle
         </ThemedText>

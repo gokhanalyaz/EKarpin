@@ -48,7 +48,7 @@ export default function VehicleDetailScreen() {
 
   return (
     <SafeScreen>
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       <ThemedView style={[styles.titleRow, styles.transparentBg]}>
         <ThemedView style={[styles.settingsButton, styles.transparentBg]} />
         <ThemedText type="title" style={styles.title}>

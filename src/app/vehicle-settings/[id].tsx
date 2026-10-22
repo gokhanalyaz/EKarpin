@@ -35,7 +35,13 @@ import {
   setDriverShiftVisibilityDays,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { getVehicle, updateVehiclePaymentModel, type PaymentModel, type Vehicle } from '@/lib/vehicles';
+import {
+  getVehicle,
+  setMaintenanceNotifyDrivers,
+  updateVehiclePaymentModel,
+  type PaymentModel,
+  type Vehicle,
+} from '@/lib/vehicles';
 
 const VISIBILITY_QUICK_DAYS = [7, 15, 30, 60, 90];
 
@@ -141,6 +147,18 @@ export default function VehicleSettingsScreen() {
     setPercentageRateInput(vehicle.percentage_rate != null ? String(vehicle.percentage_rate) : '25');
     setKmRateInput(vehicle.km_rate != null ? String(vehicle.km_rate) : '');
     setShowPaymentSheet(true);
+  }
+
+  async function handleToggleNotifyDrivers(enabled: boolean) {
+    if (!vehicle) return;
+    const previous = vehicle;
+    setVehicle({ ...vehicle, maintenance_notify_drivers: enabled });
+    try {
+      await setMaintenanceNotifyDrivers(vehicle.id, enabled);
+    } catch (e: any) {
+      setVehicle(previous);
+      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+    }
   }
 
   async function handleSavePaymentModel() {
@@ -381,7 +399,7 @@ export default function VehicleSettingsScreen() {
   return (
     <SafeScreen>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive">
@@ -428,6 +446,28 @@ export default function VehicleSettingsScreen() {
           ))}
         </GroupCard>
         <GroupFooter>Açık olan kalemler, şoför vardiya kapatırken masraf olarak seçebileceği seçeneklerde görünür.</GroupFooter>
+
+        <ThemedText type="eyebrow" style={styles.sectionTitle}>
+          Bakım Bildirimleri
+        </ThemedText>
+        <GroupCard>
+          <GroupRow
+            title="Şoförlere de gönder"
+            divider={false}
+            right={
+              <Switch
+                value={!!vehicle.maintenance_notify_drivers}
+                onValueChange={handleToggleNotifyDrivers}
+                trackColor={{ true: Brand.primary, false: theme.backgroundSelected }}
+                ios_backgroundColor={theme.backgroundSelected}
+              />
+            }
+          />
+        </GroupCard>
+        <GroupFooter>
+          Zamanı gelen bakım ve vize hatırlatmaları her sabah 09:00&apos;da sana gider. Açarsan o gün araca ekli
+          şoförlere de gider.
+        </GroupFooter>
 
         <ThemedText type="eyebrow" style={styles.sectionTitle}>
           Şoförler
@@ -664,7 +704,7 @@ export default function VehicleSettingsScreen() {
                 {selectedShiftIds.size === pickerShifts.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
               </ThemedText>
             </Pressable>
-            <ScrollView style={styles.shiftPickerList}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.shiftPickerList}>
               {pickerShifts.map((s) => {
                 const selected = selectedShiftIds.has(s.id);
                 const amount = s.owner_total ?? s.km_debt ?? s.total_amount ?? 0;

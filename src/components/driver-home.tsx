@@ -63,7 +63,7 @@ export function DriverHome() {
       {loading ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           data={vehicles}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}

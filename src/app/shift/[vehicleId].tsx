@@ -80,7 +80,7 @@ export default function ShiftScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: Spacing.four }}
         keyboardShouldPersistTaps="handled">
         {myOpenShift ? (

@@ -43,7 +43,7 @@ export default function KvkkScreen() {
         </Pressable>
       </ThemedView>
 
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
         onScroll={handleScroll}

@@ -9,20 +9,20 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 
-const SUPPORT_PHONE = '4444562';
-const SUPPORT_PHONE_DISPLAY = '444 45 62';
+// Destek hattı SADECE WhatsApp mesajı içindir (aramalar cevaplanmaz).
+// Numara belli olunca buraya ülke koduyla, boşluksuz yazılacak
+// (örn. '905321234567'). Boş kaldıkça WhatsApp satırı "yakında" uyarısı verir.
+const SUPPORT_WHATSAPP = '';
 const SUPPORT_EMAIL = 'info@digitalkarpin.com';
 
-/** "Sorun Bildir" konuları. İleride telsiz / POS / taksimetre arızası
- * gibi konular da buraya eklenecek (şimdilik "Yakında" olarak görünüyor). */
+/** "Sorun Bildir" konuları - seçilen konuyla hazır bir WhatsApp mesajı açılır. */
 const REPORT_TOPICS = [
   { key: 'app_bug', label: 'Uygulama Hatası', hint: 'Bir ekran çalışmıyor, hata veriyor vb.' },
   { key: 'suggestion', label: 'Öneri / İstek', hint: 'Uygulamada görmek istediğin bir özellik' },
   { key: 'other', label: 'Diğer', hint: 'Başka bir konu' },
 ];
-const COMING_SOON_TOPICS = ['Telsiz Arızası Bildir', 'POS Arızası Bildir', 'Taksimetre Arızası Bildir'];
 
-/** Destek sekmesi: bizi ara, e-posta gönder, sorun bildir. */
+/** Destek sekmesi: WhatsApp'tan yaz, e-posta gönder, sorun bildir. */
 export default function SupportScreen() {
   const { profile } = useAuth();
 
@@ -34,41 +34,49 @@ export default function SupportScreen() {
     }
   }
 
-  function callUs() {
-    open(`tel:${SUPPORT_PHONE}`, `Bizi ${SUPPORT_PHONE_DISPLAY} numarasından arayabilirsin.`);
-  }
-
-  function emailUs(subject: string, intro?: string) {
-    // Kim olduğunu ve hangi cihazdan yazdığını otomatik ekliyoruz ki
-    // sorunu daha hızlı çözebilelim; kullanıcı sadece sorununu yazar.
-    const body = [
-      intro ?? 'Mesajınızı buraya yazın:',
-      '',
-      '',
-      '',
-      '----- Lütfen bu kısmı silmeyin -----',
+  // Kim olduğunu ve hangi cihazdan yazdığını otomatik ekliyoruz ki
+  // sorunu daha hızlı çözebilelim; kullanıcı sadece sorununu yazar.
+  function infoLines(): string {
+    return [
+      '----- Bilgi (silmeyin) -----',
       `Ad Soyad: ${profile?.full_name ?? '-'}`,
       `Telefon: ${profile?.phone ?? '-'}`,
       `Hesap Türü: ${profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}`,
       `Uygulama Sürümü: ${Constants.expoConfig?.version ?? '-'}`,
       `Cihaz: ${Platform.OS === 'ios' ? 'iPhone' : 'Android'} (${String(Platform.Version)})`,
     ].join('\n');
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`[Dijital Karpin] ${subject}`)}&body=${encodeURIComponent(body)}`;
+  }
+
+  function whatsappUs(topic?: string) {
+    if (!SUPPORT_WHATSAPP) {
+      Alert.alert('Yakında', `WhatsApp destek hattımız çok yakında burada olacak. Şimdilik ${SUPPORT_EMAIL} adresine yazabilirsin.`);
+      return;
+    }
+    const text = `${topic ? `Konu: ${topic}\n\n` : ''}Merhaba, \n\n\n${infoLines()}`;
+    open(
+      `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(text)}`,
+      'WhatsApp açılamadı. Telefonunda WhatsApp yüklü olduğundan emin ol.'
+    );
+  }
+
+  function emailUs() {
+    const body = `Mesajınızı buraya yazın:\n\n\n\n${infoLines()}`;
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[Dijital Karpin] Destek Talebi')}&body=${encodeURIComponent(body)}`;
     open(url, `E-posta uygulaması açılamadı. Bize ${SUPPORT_EMAIL} adresinden yazabilirsin.`);
   }
 
   return (
     <SafeScreen>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         <ThemedView style={[styles.hero, styles.transparentBg]}>
           <ThemedView style={styles.heroIcon}>
-            <SymbolView name="lifepreserver.fill" size={34} tintColor={Brand.onPrimary} />
+            <SymbolView name="bubble.left.and.text.bubble.right.fill" size={30} tintColor={Brand.onPrimary} />
           </ThemedView>
           <ThemedText type="title" style={styles.title}>
             Destek
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-            Bir sorun mu yaşıyorsun ya da bir sorun mu var? Bize hemen ulaş, yardımcı olalım.
+            Bir sorun mu yaşıyorsun ya da aklına takılan bir şey mi var? Bize yaz, yardımcı olalım.
           </ThemedText>
         </ThemedView>
 
@@ -76,15 +84,26 @@ export default function SupportScreen() {
           Bize Ulaşın
         </ThemedText>
         <GroupCard>
-          <GroupRow title="Bizi Ara" subtitle={SUPPORT_PHONE_DISPLAY} chevron onPress={callUs} />
+          <GroupRow
+            title="WhatsApp'tan Yaz"
+            subtitle="En hızlı yanıt buradan"
+            chevron
+            onPress={() => whatsappUs()}
+            right={<SymbolView name="message.fill" size={18} tintColor="#25D366" />}
+          />
           <GroupRow
             title="E-posta Gönder"
             subtitle={SUPPORT_EMAIL}
             chevron
             divider={false}
-            onPress={() => emailUs('Destek Talebi')}
+            onPress={emailUs}
+            right={<SymbolView name="envelope.fill" size={18} tintColor="#8E8E93" />}
           />
         </GroupCard>
+        <GroupFooter>
+          Destek hattımız sadece WhatsApp mesajı içindir. Bu numaraya yapılan aramalar cevaplanmaz, lütfen yazılı mesaj
+          gönder.
+        </GroupFooter>
 
         <ThemedText type="eyebrow" style={styles.sectionTitle}>
           Sorun Bildir
@@ -96,22 +115,13 @@ export default function SupportScreen() {
               title={topic.label}
               subtitle={topic.hint}
               chevron
-              divider={index < REPORT_TOPICS.length - 1 || COMING_SOON_TOPICS.length > 0}
-              onPress={() => emailUs(topic.label, `${topic.label} - lütfen yaşadığın sorunu kısaca anlat:`)}
-            />
-          ))}
-          {COMING_SOON_TOPICS.map((label, index) => (
-            <GroupRow
-              key={label}
-              title={label}
-              value="Yakında"
-              disabled
-              divider={index < COMING_SOON_TOPICS.length - 1}
+              divider={index < REPORT_TOPICS.length - 1}
+              onPress={() => whatsappUs(topic.label)}
             />
           ))}
         </GroupCard>
         <GroupFooter>
-          Seçtiğin konuyla bir e-posta hazırlanır; sorununu yazıp göndermen yeterli. İstersen ekran görüntüsü de
+          Konuyu seçince hazır bir WhatsApp mesajı açılır; sorununu yazıp göndermen yeterli. İstersen ekran görüntüsü de
           ekleyebilirsin.
         </GroupFooter>
       </ScrollView>

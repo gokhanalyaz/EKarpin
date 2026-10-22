@@ -1,6 +1,6 @@
 import { getSuggestedOpeningKm } from '@/lib/shifts';
 import { supabase } from '@/lib/supabase';
-import type { Vehicle } from '@/lib/vehicles';
+import { parseDateOnly, type Vehicle } from '@/lib/vehicles';
 
 export type MaintenanceLog = {
   id: string;
@@ -21,6 +21,28 @@ export const MAINTENANCE_TYPES = [
   { key: 'fren', label: 'Fren Bakımı' },
   { key: 'diger', label: 'Diğer' },
 ] as const;
+
+/** Her bakım türü için ikon (SF Symbols). */
+export const MAINTENANCE_ICONS: Record<string, string> = {
+  lastik: 'circle.circle.fill',
+  yag: 'drop.fill',
+  periyodik: 'wrench.and.screwdriver.fill',
+  fren: 'exclamationmark.octagon.fill',
+  diger: 'ellipsis.circle.fill',
+};
+
+export type InspectionStatus = { dueDate: Date; daysLeft: number; dueSoon: boolean; overdue: boolean };
+
+/** Aracın vize durumu (vize tarihi girilmemişse null). */
+export function getInspectionStatus(vehicle: Vehicle): InspectionStatus | null {
+  if (!vehicle.inspection_due_date) return null;
+  const dueDate = parseDateOnly(vehicle.inspection_due_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
+  const notice = vehicle.inspection_notice_days ?? 10;
+  return { dueDate, daysLeft, dueSoon: daysLeft >= 0 && daysLeft <= notice, overdue: daysLeft < 0 };
+}
 
 export function maintenanceTypeLabel(key: string): string {
   return MAINTENANCE_TYPES.find((t) => t.key === key)?.label ?? key;
@@ -112,7 +134,27 @@ export function getMaintenanceStatus(log: MaintenanceLog, currentKm: number | nu
   };
 }
 
-export type MaintenanceReminder = { vehicle: Vehicle; status: MaintenanceStatus };
+export type MaintenanceReminder = {
+  key: string;
+  vehicle: Vehicle;
+  kind: 'km' | 'inspection';
+  title: string;
+  message: string;
+  overdue: boolean;
+};
+
+function kmReminderMessage(status: MaintenanceStatus): string {
+  return status.overdue
+    ? `Zamanı geçti - ${status.nextDueKm} km'de yapılması gerekiyordu (${Math.abs(status.remainingKm ?? 0).toFixed(0)} km geçti).`
+    : `Yaklaşıyor - ${status.remainingKm?.toFixed(0)} km sonra (${status.nextDueKm} km'de).`;
+}
+
+export function inspectionMessage(status: InspectionStatus): string {
+  const date = status.dueDate.toLocaleDateString('tr-TR');
+  if (status.overdue) return `Vize süresi ${Math.abs(status.daysLeft)} gün önce doldu (${date}).`;
+  if (status.daysLeft === 0) return `Vize için bugün son gün (${date}).`;
+  return `Vizeye ${status.daysLeft} gün kaldı (${date}).`;
+}
 
 /**
  * Bildirimler ekranı ve ana sayfadaki zil için: verilen araçlarda sırası
@@ -127,13 +169,33 @@ export async function listMaintenanceReminders(vehicles: Vehicle[]): Promise<Mai
         listMaintenanceLogs(vehicle.id).catch(() => [] as MaintenanceLog[]),
         getSuggestedOpeningKm(vehicle.id).catch(() => null),
       ]);
-      return latestByType(logs)
+      const kmReminders: MaintenanceReminder[] = latestByType(logs)
         .map((log) => getMaintenanceStatus(log, km))
         .filter((status) => status.dueSoon || status.overdue)
-        .map((status) => ({ vehicle, status }));
+        .map((status) => ({
+          key: status.log.id,
+          vehicle,
+          kind: 'km' as const,
+          title: maintenanceTypeLabel(status.log.type),
+          message: kmReminderMessage(status),
+          overdue: status.overdue,
+        }));
+      const inspection = getInspectionStatus(vehicle);
+      if (inspection && (inspection.dueSoon || inspection.overdue)) {
+        kmReminders.unshift({
+          key: `vize-${vehicle.id}`,
+          vehicle,
+          kind: 'inspection',
+          title: 'Vize',
+          message: inspectionMessage(inspection),
+          overdue: inspection.overdue,
+        });
+      }
+      return kmReminders;
     })
   );
-  return perVehicle.flat().sort((a, b) => (a.status.remainingKm ?? 0) - (b.status.remainingKm ?? 0));
+  // Zamanı geçenler en üstte.
+  return perVehicle.flat().sort((a, b) => Number(b.overdue) - Number(a.overdue));
 }
 
 /** Her bakim turu (type) icin en son kaydi döner (o turun en guncel durumu). */

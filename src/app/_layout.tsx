@@ -11,11 +11,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/contexts/auth-context';
 import { resolveNotificationRoute } from '@/lib/notification-routing';
+import { loadStoredTextScale } from '@/lib/text-scale';
 import { applyStoredThemePreference } from '@/lib/theme-preference';
 
 SplashScreen.preventAutoHideAsync();
 // Kayıtlı gece/gündüz modu tercihini, açılış ekranı kapanmadan uygula.
 applyStoredThemePreference();
+loadStoredTextScale();
 
 /** Bir bildirime dokunuldugunda (uygulama ZATEN acikken/arka plandayken), dogru ekrana yonlendirir. */
 function handleNotificationData(data: Record<string, unknown> | undefined) {
