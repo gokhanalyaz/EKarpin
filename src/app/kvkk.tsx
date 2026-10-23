@@ -2,10 +2,15 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { LegalDocView } from '@/components/legal-doc-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { setKvkkAccepted } from '@/lib/kvkk-consent';
+import { LEGAL_DOCS, type LegalDocKey } from '@/lib/legal-texts';
+
+/** Kayıtta onaylanan metinler: Kullanım Koşulları + KVKK Aydınlatma + Açık Rıza. */
+const SIGNUP_DOCS: LegalDocKey[] = ['kullanim', 'kvkk', 'acik-riza'];
 
 const SCROLL_END_THRESHOLD = 24;
 
@@ -37,7 +42,7 @@ export default function KvkkScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title">KVKK Aydınlatma Metni</ThemedText>
+        <ThemedText type="subtitle">Sözleşmeler ve Onaylar</ThemedText>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <ThemedText type="linkPrimary">Kapat</ThemedText>
         </Pressable>
@@ -49,69 +54,12 @@ export default function KvkkScreen() {
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={32}>
-        <ThemedText type="smallBold">1. Veri Sorumlusu</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Dijital Karpin ("Uygulama") olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu
-          ("KVKK") kapsamında veri sorumlusu sıfatıyla, kişisel verilerinizin işlenmesine ilişkin
-          sizi aşağıdaki hususlarda bilgilendiririz.
+        <ThemedText type="small" themeColor="textSecondary">
+          Kayıt olmadan önce lütfen aşağıdaki metinleri sonuna kadar okuyun.
         </ThemedText>
-
-        <ThemedText type="smallBold">2. İşlenen Kişisel Veriler</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Uygulama üzerinden; ad soyad, telefon numarası, e-posta adresi, araç plaka bilgisi,
-          vardiya (karpin) kayıtları, kilometre ve gelir-gider bilgileri, araç/yakıt fişi
-          fotoğrafları ile bildirim gönderebilmek için cihazınıza ait push bildirim kimliği
-          işlenmektedir.
-        </ThemedText>
-
-        <ThemedText type="smallBold">3. İşleme Amaçları</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Kişisel verileriniz; hesabınızın oluşturulması ve doğrulanması, araç sahibi ile şoför
-          arasında vardiya (karpin) kayıtlarının tutulması, gelir-gider hesaplamalarının
-          yapılması, tarafınıza bildirim gönderilmesi ve uygulamanın işlerliğinin sağlanması
-          amaçlarıyla sınırlı olarak işlenmektedir.
-        </ThemedText>
-
-        <ThemedText type="smallBold">4. Aktarım</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Kişisel verileriniz, uygulamanın teknik altyapısını sağlayan hizmet sağlayıcılar
-          (barındırma/veritabanı ve bildirim hizmeti sağlayıcıları) ile hesabınızı paylaştığınız
-          araç sahibi/şoför dışında üçüncü kişilerle paylaşılmaz.
-        </ThemedText>
-
-        <ThemedText type="smallBold">5. Hukuki Sebep</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Kişisel verileriniz, bir sözleşmenin kurulması ve ifasıyla doğrudan doğruya ilgili olması
-          ve veri sorumlusunun meşru menfaati hukuki sebeplerine dayanılarak işlenmektedir.
-        </ThemedText>
-
-        <ThemedText type="smallBold">6. Üçüncü Kişilerle Paylaşım İçin Açık Rıza</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Uygulama üzerinden gelecekte sunulabilecek ek hizmetler (örneğin; mazot/gider
-          fişlerinizin veya günlük hasılat raporlarınızın esnaf/şoförler odası muhasebesine ya da
-          kendi belirlediğiniz mali müşavirinize aktarılması; araç bakım, taksimetre, telsiz veya
-          POS cihazı tedarikçisi gibi hizmet sağlayıcılara randevu/arıza talebi oluşturulması)
-          yalnızca sizin açık talebiniz ve yetkilendirmeniz üzerine devreye girer. Bu tür bir
-          hizmeti kullanmayı tercih ettiğinizde, o hizmetin gerektirdiği kişisel verilerin
-          (ör. ilgili plakaya ait fişler, iletişim bilgileriniz) ilgili üçüncü kişi/kurumla, yalnızca
-          o talebi karşılamak amacıyla paylaşılmasına açık rıza göstermiş olursunuz. Bu onayı,
-          söz konusu hizmeti hiç kullanmayarak fiilen devre dışı bırakabilir; ilgili talebi
-          oluşturmadığınız sürece verileriniz bu şekilde hiçbir üçüncü kişiyle paylaşılmaz.
-        </ThemedText>
-
-        <ThemedText type="smallBold">7. Haklarınız</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme,
-          işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve amacına uygun kullanılıp
-          kullanılmadığını öğrenme, aktarıldığı üçüncü kişileri bilme, eksik/yanlış işlenmişse
-          düzeltilmesini isteme, silinmesini/yok edilmesini isteme ve itiraz haklarına sahipsiniz.
-          Taleplerinizi uygulama içindeki iletişim adresi üzerinden bize iletebilirsiniz.
-        </ThemedText>
-
-        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-          Bu metin genel bir taslaktır ve yayın öncesinde bir hukuk danışmanı tarafından teyit
-          edilmesi önerilir.
-        </ThemedText>
+        {SIGNUP_DOCS.map((key) => (
+          <LegalDocView key={key} doc={LEGAL_DOCS[key]} />
+        ))}
       </ScrollView>
 
       <ThemedView style={styles.footer}>

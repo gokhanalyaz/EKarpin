@@ -14,14 +14,16 @@ export type VehicleDriverRow = {
    * boyunca gorunur - veri silinmez, sadece soforun gorunumunden kaybolur.
    * Arac sahibi tarafinda bu sinir hicbir zaman uygulanmaz. */
   shift_visibility_days: number | null;
+  /** Şoför vardiya kapatırken uygulama komisyonu (Uber, Yandex vb.) girebilir mi (varsayılan evet). */
+  can_enter_commission?: boolean | null;
 };
 
 export async function listVehicleDrivers(vehicleId: string): Promise<VehicleDriverRow[]> {
   const { data, error } = await supabase
     .from('vehicle_drivers')
-    .select(
-      'id, vehicle_id, driver_id, created_at, daily_km_discount_limit, shift_visibility_days, driver:profiles(*)'
-    )
+    // '*' ile: yeni eklenen kolonlar (örn. can_enter_commission) veritabanında
+    // henüz yoksa bile sorgu bozulmasın.
+    .select('*, driver:profiles(*)')
     .eq('vehicle_id', vehicleId)
     .order('created_at', { ascending: true });
 
@@ -132,5 +134,14 @@ export async function removeDriverFromVehicle(
   }
 
   const { error } = await supabase.from('vehicle_drivers').delete().eq('id', vehicleDriverRowId);
+  if (error) throw error;
+}
+
+/** Araç sahibi: bu şoför uygulama komisyonu girebilsin mi. */
+export async function setDriverCanEnterCommission(vehicleDriverId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('vehicle_drivers')
+    .update({ can_enter_commission: enabled })
+    .eq('id', vehicleDriverId);
   if (error) throw error;
 }

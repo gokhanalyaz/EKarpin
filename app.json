@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
+      "supportsTablet": false,
       "bundleIdentifier": "com.gokhanalyaz.DijitalKarpin",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

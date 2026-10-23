@@ -23,6 +23,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { DEFAULT_EXPENSE_CATEGORIES, EXPENSE_CATEGORIES } from '@/lib/expense-categories';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import { deleteDriverShifts, getAnyOpenShift, queryShifts, type Shift } from '@/lib/shifts';
@@ -31,6 +32,7 @@ import {
   findDriverByPhone,
   listVehicleDrivers,
   removeDriverFromVehicle,
+  setDriverCanEnterCommission,
   setDriverDailyKmLimit,
   setDriverShiftVisibilityDays,
   type VehicleDriverRow,
@@ -135,7 +137,7 @@ export default function VehicleSettingsScreen() {
       await setEnabledExpenseCategories(vehicle.id, next);
     } catch (e: any) {
       setVehicle({ ...vehicle, enabled_expense_categories: current });
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     }
   }
 
@@ -149,6 +151,16 @@ export default function VehicleSettingsScreen() {
     setShowPaymentSheet(true);
   }
 
+  async function handleToggleDriverCommission(row: VehicleDriverRow, enabled: boolean) {
+    setDrivers((prev) => prev.map((d) => (d.id === row.id ? { ...d, can_enter_commission: enabled } : d)));
+    try {
+      await setDriverCanEnterCommission(row.id, enabled);
+    } catch (e: any) {
+      setDrivers((prev) => prev.map((d) => (d.id === row.id ? { ...d, can_enter_commission: !enabled } : d)));
+      Alert.alert('Kaydedilemedi', friendlyError(e));
+    }
+  }
+
   async function handleToggleNotifyDrivers(enabled: boolean) {
     if (!vehicle) return;
     const previous = vehicle;
@@ -157,7 +169,7 @@ export default function VehicleSettingsScreen() {
       await setMaintenanceNotifyDrivers(vehicle.id, enabled);
     } catch (e: any) {
       setVehicle(previous);
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     }
   }
 
@@ -200,7 +212,7 @@ export default function VehicleSettingsScreen() {
       setShowPaymentSheet(false);
       Alert.alert('Kaydedildi', 'Çalışma sistemi güncellendi. Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler.');
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSavingPaymentModel(false);
     }
@@ -218,7 +230,7 @@ export default function VehicleSettingsScreen() {
       await setDriverDailyKmLimit(row.id, parsed);
       await load();
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSavingLimitFor(null);
     }
@@ -234,7 +246,7 @@ export default function VehicleSettingsScreen() {
       await removeDriverFromVehicle(row.id, { vehicleId: id, driverId: row.driver_id, deleteShifts: false });
       await load();
     } catch (e: any) {
-      Alert.alert('Kaldırılamadı', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaldırılamadı', friendlyError(e));
     }
   }
 
@@ -246,7 +258,7 @@ export default function VehicleSettingsScreen() {
       await removeDriverFromVehicle(row.id, { vehicleId: id, driverId: row.driver_id, deleteShifts: true });
       await load();
     } catch (e: any) {
-      Alert.alert('Kaldırılamadı', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaldırılamadı', friendlyError(e));
     }
   }
 
@@ -297,7 +309,7 @@ export default function VehicleSettingsScreen() {
       setShiftPickerFor(null);
       await load();
     } catch (e: any) {
-      Alert.alert('Silinemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Silinemedi', friendlyError(e));
     }
   }
 
@@ -318,7 +330,7 @@ export default function VehicleSettingsScreen() {
       setVisibilityTarget(null);
       await load();
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSavingVisibility(false);
     }
@@ -376,7 +388,7 @@ export default function VehicleSettingsScreen() {
       setShowAddDriver(false);
       await load();
     } catch (e: any) {
-      Alert.alert('Eklenemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Eklenemedi', friendlyError(e));
     } finally {
       setAssigning(false);
     }
@@ -539,6 +551,19 @@ export default function VehicleSettingsScreen() {
                         {savingLimitFor === item.id ? '...' : 'Kaydet'}
                       </ThemedText>
                     </Pressable>
+                  </ThemedView>
+                )}
+                {keys.includes('uygulama_komisyonu') && (
+                  <ThemedView style={styles.inlineRow}>
+                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
+                      Uygulama komisyonu girebilir
+                    </ThemedText>
+                    <Switch
+                      value={item.can_enter_commission !== false}
+                      onValueChange={(v) => handleToggleDriverCommission(item, v)}
+                      trackColor={{ true: Brand.primary, false: theme.backgroundSelected }}
+                      ios_backgroundColor={theme.backgroundSelected}
+                    />
                   </ThemedView>
                 )}
               </ThemedView>

@@ -8,6 +8,7 @@ export type ExpenseCategoryKey =
   | 'durak_aidati'
   | 'hgs_otoyol'
   | 'tamir_bakim'
+  | 'uygulama_komisyonu'
   | 'diger';
 
 export type ExpenseCategoryDef = {
@@ -22,10 +23,17 @@ export const EXPENSE_CATEGORIES: ExpenseCategoryDef[] = [
   { key: 'durak_aidati', label: 'Durak Aidatı' },
   { key: 'hgs_otoyol', label: 'HGS / Otoyol' },
   { key: 'tamir_bakim', label: 'Tamir ve Küçük Bakım' },
+  { key: 'uygulama_komisyonu', label: 'Uygulama Komisyonları' },
   { key: 'diger', label: 'Diğer', hasNote: true },
 ];
 
-export const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategoryKey[] = EXPENSE_CATEGORIES.map((c) => c.key);
+/** Varsayılan açık kategoriler (uygulama komisyonu araç sahibi açarsa görünür). */
+export const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategoryKey[] = EXPENSE_CATEGORIES.map((c) => c.key).filter(
+  (k) => k !== 'uygulama_komisyonu'
+);
+
+/** Uygulama komisyonu girilebilecek taksi uygulamaları (her biri ayrı tutar). */
+export const COMMISSION_PLATFORMS = ['Uber', 'Yandex Go', 'BiTaksi', 'Diğer Uygulama'] as const;
 
 export type ExpenseItem = {
   category: ExpenseCategoryKey;

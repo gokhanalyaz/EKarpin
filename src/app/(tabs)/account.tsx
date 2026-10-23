@@ -11,7 +11,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { formatPhoneWithPrefix } from '@/lib/format';
 import {
   setTextScale,
@@ -92,6 +94,40 @@ export default function AccountScreen() {
     }, [loadVehicles])
   );
 
+  // Apple şartı: kullanıcı hesabını uygulamanın içinden silebilmeli.
+  function handleDeleteAccount() {
+    const isOwnerAccount = profile?.role === 'owner';
+    Alert.alert(
+      'Hesabımı Sil',
+      isOwnerAccount
+        ? 'Hesabın, araçların ve araçlarına ait TÜM karpin, bakım ve bildirim kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.'
+        : 'Hesabın ve kişisel bilgilerin kalıcı olarak silinecek, bir daha bu hesapla giriş yapamayacaksın. Araç sahiplerinin kayıtları için geçmiş karpinlerin "Silinmiş Şoför" adıyla araç sahibinde kalır. Bu işlem geri alınamaz.',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Devam Et',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert('Emin misin?', 'Son onay: hesabın kalıcı olarak silinecek.', [
+              { text: 'Vazgeç', style: 'cancel' },
+              { text: 'Evet, Hesabımı Sil', style: 'destructive', onPress: performDeleteAccount },
+            ]),
+        },
+      ]
+    );
+  }
+
+  async function performDeleteAccount() {
+    try {
+      const { error } = await supabase.rpc('delete_my_account');
+      if (error) throw error;
+      Alert.alert('Hesabın silindi', 'Dijital Karpin\'i kullandığın için teşekkürler.');
+      await signOut();
+    } catch (e: any) {
+      Alert.alert('Hesap silinemedi', friendlyError(e));
+    }
+  }
+
   function handleSignOut() {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinize emin misiniz?', [
       { text: 'Vazgeç', style: 'cancel' },
@@ -134,7 +170,7 @@ export default function AccountScreen() {
       setAddingForVehicle(null);
       await loadVehicles();
     } catch (e: any) {
-      Alert.alert('Eklenemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Eklenemedi', friendlyError(e));
     } finally {
       setAssigning(false);
     }
@@ -170,7 +206,7 @@ export default function AccountScreen() {
       await removeDriverFromVehicle(row.id, { vehicleId, driverId: row.driver_id, deleteShifts });
       await loadVehicles();
     } catch (e: any) {
-      Alert.alert('Silinemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Silinemedi', friendlyError(e));
     }
   }
 
@@ -299,6 +335,20 @@ export default function AccountScreen() {
         onPress={handleSignOut}>
         <ThemedText style={styles.signOutButtonText}>Çıkış Yap</ThemedText>
       </Pressable>
+
+      {/* Hukuki metinler */}
+      <GroupCard style={styles.legalCard}>
+        <GroupRow title="Gizlilik Politikası" chevron onPress={() => router.push('/legal?doc=gizlilik' as any)} />
+        <GroupRow title="Kullanım Koşulları" chevron onPress={() => router.push('/legal?doc=kullanim' as any)} />
+        <GroupRow title="KVKK Aydınlatma Metni" chevron onPress={() => router.push('/legal?doc=kvkk' as any)} />
+        <GroupRow title="Açık Rıza Metni" chevron divider={false} onPress={() => router.push('/legal?doc=acik-riza' as any)} />
+      </GroupCard>
+
+      <Pressable onPress={handleDeleteAccount} style={({ pressed }) => [styles.deleteAccount, pressed && styles.deleteButtonPressed]}>
+        <ThemedText type="small" style={styles.deleteAccountText}>
+          Hesabımı Sil
+        </ThemedText>
+      </Pressable>
     </ScrollView>
 
     <ActionSheetModal visible={showAppearance} onClose={() => setShowAppearance(false)} title="Görünüm">
@@ -424,5 +474,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.six,
   },
   signOutButtonPressed: { opacity: 0.6 },
+  legalCard: { marginTop: Spacing.five },
+  deleteAccount: { alignItems: 'center', paddingVertical: Spacing.three, marginTop: Spacing.three },
+  deleteAccountText: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold },
   signOutButtonText: { color: '#DC2626', fontFamily: FontFamily.bodyBold, fontSize: 16 },
 });

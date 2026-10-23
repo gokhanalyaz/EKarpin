@@ -60,7 +60,7 @@ export default function SignupScreen() {
     if (!kvkkAccepted) {
       Alert.alert(
         'Onay gerekli',
-        'Devam etmek için KVKK Aydınlatma Metni\'ni okuyup kabul etmen gerekiyor.'
+        'Devam etmek için Kullanım Koşulları, KVKK Aydınlatma Metni ve Açık Rıza Metni\'ni okuyup kabul etmen gerekiyor.'
       );
       return;
     }
@@ -168,7 +168,7 @@ export default function SignupScreen() {
             </ThemedView>
             <ThemedText type="small" style={styles.kvkkText}>
               <ThemedText type="linkPrimary" style={styles.kvkkLink}>
-                KVKK Aydınlatma Metni
+                Kullanım Koşulları, KVKK Aydınlatma Metni ve Açık Rıza Metni
               </ThemedText>
               {"'ni okudum, kabul ediyorum."}
             </ThemedText>

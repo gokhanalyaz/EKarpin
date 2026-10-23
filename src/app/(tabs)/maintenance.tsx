@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { getSuggestedOpeningKm } from '@/lib/shifts';
 import {
   addMaintenanceLog,
@@ -178,7 +179,7 @@ export default function MaintenanceScreen() {
       setFormOpen(false);
       await load();
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSaving(false);
     }
@@ -199,7 +200,7 @@ export default function MaintenanceScreen() {
               setFormOpen(false);
               await load();
             } catch (e: any) {
-              Alert.alert('Silinemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+              Alert.alert('Silinemedi', friendlyError(e));
             }
           },
         },
@@ -239,7 +240,7 @@ export default function MaintenanceScreen() {
               });
               await load();
             } catch (e: any) {
-              Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+              Alert.alert('Kaydedilemedi', friendlyError(e));
             }
           },
         },
@@ -272,7 +273,7 @@ export default function MaintenanceScreen() {
       );
       setInspectionOpen(false);
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSavingInspection(false);
     }

@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { friendlyError } from '@/lib/errors';
 import { createVehicle, deleteVehicle, uploadVehicleRegistration, type PaymentModel } from '@/lib/vehicles';
 
 /**
@@ -81,7 +82,7 @@ export default function AddVehicleScreen() {
       }
       router.back();
     } catch (e: any) {
-      Alert.alert('Kaydedilemedi', e?.message ?? 'Bilinmeyen hata oluştu.');
+      Alert.alert('Kaydedilemedi', friendlyError(e));
     } finally {
       setSubmitting(false);
     }

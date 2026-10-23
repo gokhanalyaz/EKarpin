@@ -10,9 +10,9 @@ import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 
 // Destek hattı SADECE WhatsApp mesajı içindir (aramalar cevaplanmaz).
-// Numara belli olunca buraya ülke koduyla, boşluksuz yazılacak
-// (örn. '905321234567'). Boş kaldıkça WhatsApp satırı "yakında" uyarısı verir.
-const SUPPORT_WHATSAPP = '';
+// Ülke koduyla, boşluksuz: 0542 249 83 72
+const SUPPORT_WHATSAPP = '905422498372';
+const SUPPORT_WHATSAPP_DISPLAY = '0542 249 83 72';
 const SUPPORT_EMAIL = 'info@digitalkarpin.com';
 
 /** "Sorun Bildir" konuları - seçilen konuyla hazır bir WhatsApp mesajı açılır. */
@@ -86,7 +86,7 @@ export default function SupportScreen() {
         <GroupCard>
           <GroupRow
             title="WhatsApp'tan Yaz"
-            subtitle="En hızlı yanıt buradan"
+            subtitle={`${SUPPORT_WHATSAPP_DISPLAY} · en hızlı yanıt`}
             chevron
             onPress={() => whatsappUs()}
             right={<SymbolView name="message.fill" size={18} tintColor="#25D366" />}

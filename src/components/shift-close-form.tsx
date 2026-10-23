@@ -10,7 +10,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { closeShift, formatDuration, getShiftDurationMinutes, getUsedKmDiscountToday, type Shift } from '@/lib/shifts';
 import { getOwnerPushToken, sendPushNotification } from '@/lib/notifications';
 import { getDriverDailyKmLimit, listVehicleDrivers, type VehicleDriverRow } from '@/lib/vehicle-drivers';
-import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES, type ExpenseItem } from '@/lib/expense-categories';
+import {
+  COMMISSION_PLATFORMS,
+  DEFAULT_EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORIES,
+  type ExpenseItem,
+} from '@/lib/expense-categories';
 import type { Vehicle } from '@/lib/vehicles';
 
 type Props = {
@@ -47,9 +52,14 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
   const isPercentage = vehicle.payment_model === 'percentage';
 
   const enabledExpenseCategoryKeys = vehicle.enabled_expense_categories ?? DEFAULT_EXPENSE_CATEGORIES;
-  const enabledExpenseCategories = EXPENSE_CATEGORIES.filter((c) =>
-    enabledExpenseCategoryKeys.includes(c.key)
+  // Uygulama komisyonu ayrı gösteriliyor (her uygulama için ayrı tutar).
+  const enabledExpenseCategories = EXPENSE_CATEGORIES.filter(
+    (c) => enabledExpenseCategoryKeys.includes(c.key) && c.key !== 'uygulama_komisyonu'
   );
+  const myDriverRow = drivers.find((d) => d.driver_id === profile?.id);
+  const showCommission =
+    enabledExpenseCategoryKeys.includes('uygulama_komisyonu') && myDriverRow?.can_enter_commission !== false;
+  const commissionKey = (platform: string) => `komisyon:${platform}`;
 
   useEffect(() => {
     listVehicleDrivers(vehicle.id)
@@ -82,10 +92,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
     return Number.isFinite(n) ? n : 0;
   }
 
-  const otherExpensesTotal = enabledExpenseCategories.reduce(
-    (sum, cat) => sum + num(expenseAmounts[cat.key] ?? ''),
-    0
-  );
+  const commissionTotal = showCommission
+    ? COMMISSION_PLATFORMS.reduce((sum, p) => sum + num(expenseAmounts[commissionKey(p)] ?? ''), 0)
+    : 0;
+  const otherExpensesTotal =
+    enabledExpenseCategories.reduce((sum, cat) => sum + num(expenseAmounts[cat.key] ?? ''), 0) + commissionTotal;
   const base = num(totalAmount) - num(fuelCost) - otherExpensesTotal;
   const driverShare = isPercentage ? base * ((vehicle.percentage_rate ?? 25) / 100) : 0;
   // Toplam (nakit + kredi karti) once hesaplanir, nakit kismi bundan kredi
@@ -199,7 +210,15 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
                     note: cat.key === 'diger' && expenseNote.trim() ? expenseNote.trim() : undefined,
                   };
                 })
-                .filter((item): item is ExpenseItem => item !== null))
+                .filter((item): item is ExpenseItem => item !== null)
+                .concat(
+                  showCommission
+                    ? COMMISSION_PLATFORMS.map((platform): ExpenseItem | null => {
+                        const amount = num(expenseAmounts[commissionKey(platform)] ?? '');
+                        return amount > 0 ? { category: 'uygulama_komisyonu', amount, note: platform } : null;
+                      }).filter((item): item is ExpenseItem => item !== null)
+                    : []
+                ))
             : undefined,
           cardAmount: isPercentage ? num(cardAmount) : undefined,
           notes: notes.trim() ? notes.trim() : undefined,
@@ -251,9 +270,6 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>
         Vardiya Kapat
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={{ opacity: 0.4 }}>
-        build-check: PD-04
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {vehicle.plate_no} · Açılış km: {shift.opening_km ?? '-'}
@@ -374,6 +390,32 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
                   {fuelReceiptUri ? 'Fişi Yeniden Çek' : 'Fiş Ekle'}
                 </ThemedText>
               </Pressable>
+            </>
+          )}
+
+          {showCommission && (
+            <>
+              <ThemedText type="smallBold" style={styles.sectionTitle}>
+                Uygulama Komisyonları
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                Bu vardiyada taksi uygulamalarının kestiği komisyonları yaz (boş bırakabilirsin).
+              </ThemedText>
+              {COMMISSION_PLATFORMS.map((platform) => (
+                <ThemedView key={platform} style={styles.expenseRow}>
+                  <ThemedText type="small" style={styles.expenseLabel}>
+                    {platform}
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.input, styles.expenseInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                    placeholder="₺"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="decimal-pad"
+                    value={expenseAmounts[commissionKey(platform)] ?? ''}
+                    onChangeText={(v) => setExpenseAmounts((prev) => ({ ...prev, [commissionKey(platform)]: v }))}
+                  />
+                </ThemedView>
+              ))}
             </>
           )}
 

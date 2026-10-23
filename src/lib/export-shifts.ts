@@ -3,6 +3,7 @@ import * as Print from 'expo-print';
 import { Alert, Platform, Share } from 'react-native';
 import * as XLSX from 'xlsx';
 
+import { EXPENSE_CATEGORIES } from '@/lib/expense-categories';
 import type { Shift } from '@/lib/shifts';
 import type { Vehicle } from '@/lib/vehicles';
 
@@ -43,12 +44,41 @@ type ExportRow = {
   fuel: number | null;
   expenseAmount: number | null;
   expenseNote: string | null;
+  /** Kategori bazında masraf dökümü (oto yıkama, durak aidatı, komisyon...). */
+  expenseByCategory: Record<string, number>;
+  /** Kategori bazında açıklamalar (Diğer notu, komisyonda uygulama adları). */
+  expenseNotesByCategory: Record<string, string>;
   driverShare: number | null;
   ownerNet: number | null;
   cash: number | null;
   kmDebt: number | null;
   notes: string | null;
 };
+
+/** Excel'de ayrı sütun olarak gösterilen masraf kategorileri. */
+const EXPENSE_COLUMNS = EXPENSE_CATEGORIES.map((c) => ({ key: c.key, label: c.label }));
+
+function buildExpenseBreakdown(s: Shift): { amounts: Record<string, number>; notes: Record<string, string> } {
+  const amounts: Record<string, number> = {};
+  const notes: Record<string, string> = {};
+  if (s.payment_model !== 'percentage') return { amounts, notes };
+  const items = s.expense_items ?? [];
+  if (items.length === 0 && (Number(s.other_expenses) || 0) > 0) {
+    // Eski kayıtlar: döküm yok, toplam masraf "Diğer"e yazılır.
+    amounts.diger = Number(s.other_expenses);
+    if (s.other_expenses_note) notes.diger = s.other_expenses_note;
+    return { amounts, notes };
+  }
+  items.forEach((item) => {
+    const amount = Number(item.amount) || 0;
+    amounts[item.category] = (amounts[item.category] ?? 0) + amount;
+    if (item.note) {
+      const piece = item.category === 'uygulama_komisyonu' ? `${item.note} ${amount.toFixed(2)}` : item.note;
+      notes[item.category] = notes[item.category] ? `${notes[item.category]}, ${piece}` : piece;
+    }
+  });
+  return { amounts, notes };
+}
 
 const HEADERS = [
   'Vardiya No',
@@ -63,13 +93,15 @@ const HEADERS = [
   'Hasılat (₺)',
   'Kredi Kartı (₺)',
   'Motorin (₺)',
-  'Masraf (₺)',
+  ...EXPENSE_CATEGORIES.map((c) => `${c.label} (₺)`),
+  'Toplam Masraf (₺)',
+  'Masraf Açıklaması',
   'Şoför Payı (₺)',
   'Net Kalan (₺)',
   'Nakit (₺)',
   'Km Borcu (₺)',
   'Not',
-] as const;
+];
 
 function formatDateTimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -101,6 +133,10 @@ function buildExportRows(shifts: Shift[], driverNames: Record<string, string>): 
     fuel: s.payment_model === 'percentage' ? s.fuel_cost : null,
     expenseAmount: s.payment_model === 'percentage' ? s.other_expenses : null,
     expenseNote: s.payment_model === 'percentage' ? s.other_expenses_note : null,
+    ...(() => {
+      const b = buildExpenseBreakdown(s);
+      return { expenseByCategory: b.amounts, expenseNotesByCategory: b.notes };
+    })(),
     driverShare: s.payment_model === 'percentage' ? s.driver_share : null,
     ownerNet: s.payment_model === 'percentage' ? s.owner_total : null,
     cash: s.payment_model === 'percentage' ? s.net_cash : null,
@@ -114,7 +150,14 @@ function sumBy(rows: ExportRow[], key: keyof ExportRow): number {
 }
 
 function computeTotals(rows: ExportRow[]) {
+  const byCategory: Record<string, number> = {};
+  rows.forEach((r) => {
+    Object.entries(r.expenseByCategory).forEach(([k, v]) => {
+      byCategory[k] = (byCategory[k] ?? 0) + v;
+    });
+  });
   return {
+    byCategory,
     revenue: sumBy(rows, 'revenue'),
     card: sumBy(rows, 'card'),
     fuel: sumBy(rows, 'fuel'),
@@ -129,6 +172,22 @@ function computeTotals(rows: ExportRow[]) {
 function expenseDisplay(row: ExportRow): string {
   if (row.expenseAmount == null) return '';
   return row.expenseNote ? `${row.expenseAmount.toFixed(2)} (${row.expenseNote})` : row.expenseAmount.toFixed(2);
+}
+
+/** Masraf açıklamaları tek metin: "Diğer: lastik tamiri · Komisyon: Uber 50.00, Yandex Go 30.00" */
+function expenseNotesText(row: ExportRow): string {
+  return EXPENSE_COLUMNS.filter((c) => row.expenseNotesByCategory[c.key])
+    .map((c) => `${c.key === 'uygulama_komisyonu' ? 'Komisyon' : c.label}: ${row.expenseNotesByCategory[c.key]}`)
+    .join(' · ');
+}
+
+/** PDF için tek hücrede masraf dökümü: "Oto Yıkama 50.00 · HGS / Otoyol 20.00 ..." */
+function expenseBreakdownText(row: ExportRow): string {
+  const parts = EXPENSE_COLUMNS.filter((c) => (row.expenseByCategory[c.key] ?? 0) > 0).map((c) => {
+    const note = row.expenseNotesByCategory[c.key];
+    return `${c.label} ${row.expenseByCategory[c.key].toFixed(2)}${note ? ` (${note})` : ''}`;
+  });
+  return parts.length > 0 ? parts.join(' · ') : '-';
 }
 
 /** Dosya adında sorun çıkarabilecek karakterleri (/, :, boşluk vs.) temizler. */
@@ -191,7 +250,9 @@ export async function exportShiftsToExcel(
       r.revenue ?? '',
       r.card ?? '',
       r.fuel ?? '',
-      expenseDisplay(r),
+      ...EXPENSE_COLUMNS.map((c) => (r.system === 'percentage' ? r.expenseByCategory[c.key] ?? 0 : '')),
+      r.expenseAmount ?? '',
+      expenseNotesText(r),
       r.driverShare ?? '',
       r.ownerNet ?? '',
       r.cash ?? '',
@@ -211,7 +272,9 @@ export async function exportShiftsToExcel(
       totals.revenue,
       totals.card,
       totals.fuel,
+      ...EXPENSE_COLUMNS.map((c) => totals.byCategory[c.key] ?? 0),
       totals.expenseAmount,
+      '',
       totals.driverShare,
       totals.ownerNet,
       totals.cash,
@@ -258,7 +321,7 @@ const PDF_COLUMNS: PdfColumn[] = [
   { header: 'Hasılat', weight: 2, align: 'right' },
   { header: 'K.Kartı', weight: 1.8, align: 'right' },
   { header: 'Motorin', weight: 1.8, align: 'right' },
-  { header: 'Masraf', weight: 2.8, align: 'left' },
+  { header: 'Masraf Dökümü', weight: 5, align: 'left' },
   { header: 'Ş.Payı', weight: 2, align: 'right' },
   { header: 'Net Kalan', weight: 2.2, align: 'right' },
   { header: 'Nakit', weight: 2, align: 'right' },
@@ -284,7 +347,7 @@ function pdfRowValues(r: ExportRow): string[] {
     money(r.revenue),
     money(r.card),
     money(r.fuel),
-    r.expenseAmount != null ? expenseDisplay(r) : '-',
+    r.expenseAmount != null ? `${r.expenseAmount.toFixed(2)} — ${expenseBreakdownText(r)}` : '-',
     money(r.driverShare),
     money(r.ownerNet),
     money(r.cash),
@@ -299,6 +362,15 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function categorySummaryHtml(totals: ReturnType<typeof computeTotals>): string {
+  const rows = EXPENSE_COLUMNS.filter((c) => (totals.byCategory[c.key] ?? 0) > 0)
+    .map((c) => `<tr><td>${escapeHtml(c.label)}</td><td style="text-align:right">${money(totals.byCategory[c.key])} ₺</td></tr>`)
+    .join('');
+  if (!rows) return '';
+  return `<h2>Masraf Dökümü (Toplam)</h2>
+  <table class="summary">${rows}<tr class="sum"><td>Toplam Masraf</td><td style="text-align:right">${money(totals.expenseAmount)} ₺</td></tr></table>`;
 }
 
 function buildPdfHtml(
@@ -347,6 +419,10 @@ function buildPdfHtml(
   th, td { font-size: 7.5px; padding: 3px 3px; border-bottom: 0.5px solid #ddd; word-break: break-word; white-space: normal; }
   th { background: #FFC400; color: #1a1a1a; font-weight: 700; border-bottom: none; }
   tfoot td { font-weight: 700; border-top: 1px solid #1a1a1a; border-bottom: none; }
+  h2 { font-size: 11px; margin: 14px 0 4px 0; }
+  table.summary { width: 260px; table-layout: auto; }
+  table.summary td { font-size: 9px; }
+  table.summary tr.sum td { font-weight: 700; border-top: 1px solid #1a1a1a; }
 </style>
 </head>
 <body>
@@ -360,6 +436,7 @@ function buildPdfHtml(
     <tbody>${bodyRows}</tbody>
     <tfoot><tr>${totalsCells}</tr></tfoot>
   </table>
+  ${categorySummaryHtml(totals)}
 </body>
 </html>`;
 }
