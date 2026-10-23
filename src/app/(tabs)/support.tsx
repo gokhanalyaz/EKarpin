@@ -1,13 +1,11 @@
-import Constants from 'expo-constants';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Linking, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet } from 'react-native';
 
 import { GroupCard, GroupFooter, GroupRow } from '@/components/grouped-list';
 import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth-context';
 
 // Destek hattı SADECE WhatsApp mesajı içindir (aramalar cevaplanmaz).
 // Ülke koduyla, boşluksuz: 0542 249 83 72
@@ -15,16 +13,9 @@ const SUPPORT_WHATSAPP = '905422498372';
 const SUPPORT_WHATSAPP_DISPLAY = '0542 249 83 72';
 const SUPPORT_EMAIL = 'info@digitalkarpin.com';
 
-/** "Sorun Bildir" konuları - seçilen konuyla hazır bir WhatsApp mesajı açılır. */
-const REPORT_TOPICS = [
-  { key: 'app_bug', label: 'Uygulama Hatası', hint: 'Bir ekran çalışmıyor, hata veriyor vb.' },
-  { key: 'suggestion', label: 'Öneri / İstek', hint: 'Uygulamada görmek istediğin bir özellik' },
-  { key: 'other', label: 'Diğer', hint: 'Başka bir konu' },
-];
 
-/** Destek sekmesi: WhatsApp'tan yaz, e-posta gönder, sorun bildir. */
+/** Destek sekmesi: WhatsApp'tan yaz veya e-posta gönder (hazır metin yok). */
 export default function SupportScreen() {
-  const { profile } = useAuth();
 
   async function open(url: string, fallbackMessage: string) {
     try {
@@ -34,35 +25,16 @@ export default function SupportScreen() {
     }
   }
 
-  // Kim olduğunu ve hangi cihazdan yazdığını otomatik ekliyoruz ki
-  // sorunu daha hızlı çözebilelim; kullanıcı sadece sorununu yazar.
-  function infoLines(): string {
-    return [
-      '----- Bilgi (silmeyin) -----',
-      `Ad Soyad: ${profile?.full_name ?? '-'}`,
-      `Telefon: ${profile?.phone ?? '-'}`,
-      `Hesap Türü: ${profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}`,
-      `Uygulama Sürümü: ${Constants.expoConfig?.version ?? '-'}`,
-      `Cihaz: ${Platform.OS === 'ios' ? 'iPhone' : 'Android'} (${String(Platform.Version)})`,
-    ].join('\n');
-  }
-
-  function whatsappUs(topic?: string) {
-    if (!SUPPORT_WHATSAPP) {
-      Alert.alert('Yakında', `WhatsApp destek hattımız çok yakında burada olacak. Şimdilik ${SUPPORT_EMAIL} adresine yazabilirsin.`);
-      return;
-    }
-    const text = `${topic ? `Konu: ${topic}\n\n` : ''}Merhaba, \n\n\n${infoLines()}`;
-    open(
-      `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(text)}`,
-      'WhatsApp açılamadı. Telefonunda WhatsApp yüklü olduğundan emin ol.'
-    );
+  // Hazır metin yok: sohbet boş açılır, kullanıcı sorununu kendisi yazar.
+  function whatsappUs() {
+    open(`https://wa.me/${SUPPORT_WHATSAPP}`, 'WhatsApp açılamadı. Telefonunda WhatsApp yüklü olduğundan emin ol.');
   }
 
   function emailUs() {
-    const body = `Mesajınızı buraya yazın:\n\n\n\n${infoLines()}`;
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[Dijital Karpin] Destek Talebi')}&body=${encodeURIComponent(body)}`;
-    open(url, `E-posta uygulaması açılamadı. Bize ${SUPPORT_EMAIL} adresinden yazabilirsin.`);
+    open(
+      `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Dijital Karpin Destek')}`,
+      `E-posta uygulaması açılamadı. Bize ${SUPPORT_EMAIL} adresinden yazabilirsin.`
+    );
   }
 
   return (
@@ -88,7 +60,7 @@ export default function SupportScreen() {
             title="WhatsApp'tan Yaz"
             subtitle={`${SUPPORT_WHATSAPP_DISPLAY} · en hızlı yanıt`}
             chevron
-            onPress={() => whatsappUs()}
+            onPress={whatsappUs}
             right={<SymbolView name="message.fill" size={18} tintColor="#25D366" />}
           />
           <GroupRow
@@ -101,29 +73,9 @@ export default function SupportScreen() {
           />
         </GroupCard>
         <GroupFooter>
-          Destek hattımız sadece WhatsApp mesajı içindir. Bu numaraya yapılan aramalar cevaplanmaz, lütfen yazılı mesaj
-          gönder.
+          Sorununu WhatsApp'tan yazman yeterli; istersen ekran görüntüsü de ekleyebilirsin. Bu numara sadece WhatsApp mesajı içindir, aramalar cevaplanmaz.
         </GroupFooter>
 
-        <ThemedText type="eyebrow" style={styles.sectionTitle}>
-          Sorun Bildir
-        </ThemedText>
-        <GroupCard>
-          {REPORT_TOPICS.map((topic, index) => (
-            <GroupRow
-              key={topic.key}
-              title={topic.label}
-              subtitle={topic.hint}
-              chevron
-              divider={index < REPORT_TOPICS.length - 1}
-              onPress={() => whatsappUs(topic.label)}
-            />
-          ))}
-        </GroupCard>
-        <GroupFooter>
-          Konuyu seçince hazır bir WhatsApp mesajı açılır; sorununu yazıp göndermen yeterli. İstersen ekran görüntüsü de
-          ekleyebilirsin.
-        </GroupFooter>
       </ScrollView>
     </SafeScreen>
   );
