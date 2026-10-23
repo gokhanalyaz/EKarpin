@@ -1,7 +1,10 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { SafeScreen } from '@/components/safe-screen';
+import { goBackOrHome } from '@/lib/navigation';
 import { ShiftCloseForm } from '@/components/shift-close-form';
 import { ShiftHistoryList } from '@/components/shift-history-list';
 import { ShiftOpenForm } from '@/components/shift-open-form';
@@ -10,12 +13,14 @@ import { ThemedView } from '@/components/themed-view';
 import { VehicleAlertForm } from '@/components/vehicle-alert-form';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 import { getAnyOpenShift, getOpenShiftForDriver, type Shift } from '@/lib/shifts';
 import { getVehicle, type Vehicle } from '@/lib/vehicles';
 
 export default function ShiftScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
   const { profile } = useAuth();
+  const theme = useTheme();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [myOpenShift, setMyOpenShift] = useState<Shift | null>(null);
   const [otherOpenShift, setOtherOpenShift] = useState<Shift | null>(null);
@@ -79,9 +84,15 @@ export default function ShiftScreen() {
   }
 
   return (
+    <SafeScreen>
+    <ThemedView style={styles.topBar}>
+      <Pressable hitSlop={12} onPress={goBackOrHome} style={styles.backButton} accessibilityLabel="Geri">
+        <SymbolView name="chevron.left" size={20} tintColor={theme.text} />
+      </Pressable>
+    </ThemedView>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: Spacing.four }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.four, paddingBottom: Spacing.six }}
         keyboardShouldPersistTaps="handled">
         {myOpenShift ? (
           <>
@@ -110,10 +121,13 @@ export default function ShiftScreen() {
         <ShiftHistoryList vehicle={vehicle} />
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  topBar: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, backgroundColor: 'transparent' },
+  backButton: { width: 36, height: 36, justifyContent: 'center' },
   alertToggle: { alignItems: 'center', marginTop: Spacing.three, paddingVertical: Spacing.two },
   alertToggleText: { color: '#DC2626' },
 });

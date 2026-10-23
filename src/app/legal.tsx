@@ -3,6 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { LegalDocView } from '@/components/legal-doc-view';
+import { goBackOrHome } from '@/lib/navigation';
 import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -18,7 +19,7 @@ export default function LegalScreen() {
   return (
     <SafeScreen>
       <View style={styles.header}>
-        <Pressable hitSlop={12} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={12} onPress={goBackOrHome} style={styles.back}>
           <SymbolView name="chevron.left" size={20} tintColor={theme.text} />
         </Pressable>
         <ThemedText type="smallBold" style={styles.headerTitle} numberOfLines={1}>

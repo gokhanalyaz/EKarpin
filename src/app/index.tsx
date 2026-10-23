@@ -5,7 +5,7 @@ import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
-import { resolveNotificationRoute } from '@/lib/notification-routing';
+import { resolveNotificationRoute, setPendingNotificationRoute } from '@/lib/notification-routing';
 
 export default function Index() {
   const { session, profile, loading } = useAuth();
@@ -44,5 +44,7 @@ export default function Index() {
     return <Redirect href="/login" />;
   }
 
-  return <Redirect href={(notifTarget ?? '/home') as any} />;
+  // Bildirim hedefi ana sayfanın ÜSTÜNE açılsın (geri ile ana sayfaya dönülebilsin).
+  setPendingNotificationRoute(notifTarget);
+  return <Redirect href="/home" />;
 }

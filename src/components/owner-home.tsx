@@ -3,6 +3,8 @@ import { SymbolView } from 'expo-symbols';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
@@ -19,6 +21,7 @@ type StatusInfo = { open: boolean; driverName?: string; cornerLabel?: string; co
 
 export function OwnerHome() {
   const { profile } = useAuth();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const [notificationCount, setNotificationCount] = useState(0);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -75,7 +78,7 @@ export function OwnerHome() {
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.three }]}>
       <ThemedView style={styles.headerRow}>
         <ThemedView style={styles.bellButton} />
         <ThemedText type="title" style={styles.header}>

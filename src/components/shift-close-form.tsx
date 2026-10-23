@@ -271,7 +271,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
       <ThemedText type="title" style={styles.title}>
         Vardiya Kapat
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
         {vehicle.plate_no} · Açılış km: {shift.opening_km ?? '-'}
       </ThemedText>
 
@@ -298,8 +298,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             Km Düşümü (İsteğe Bağlı)
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-            Bugün için kalan hakkın: {kmDiscountRemaining} km. Örn. müşteri iptal etti, durağa
-            boş dönmek zorunda kaldın gibi durumlarda kullan.
+            Bugün kalan hakkın: {kmDiscountRemaining} km
           </ThemedText>
           <TextInput
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -323,10 +322,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
       )}
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Km Sayacı Fotoğrafı
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-        İsteğe bağlı — sadece kameradan çekilebilir, galeriden yükleme yapılamaz.
+        Km Sayacı Fotoğrafı (isteğe bağlı)
       </ThemedText>
       {photoUri ? <Image source={{ uri: photoUri }} style={styles.preview} /> : null}
       <Pressable
@@ -377,9 +373,6 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
           {fuelCost.trim().length > 0 && (
             <>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-                Fişi sadece kameradan çekebilirsin, galeriden yükleme yapılamaz.
-              </ThemedText>
               {fuelReceiptUri ? (
                 <Image source={{ uri: fuelReceiptUri }} style={styles.receiptPreview} />
               ) : null}
@@ -399,7 +392,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
                 Uygulama Komisyonları
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-                Bu vardiyada taksi uygulamalarının kestiği komisyonları yaz (boş bırakabilirsin).
+                Boş bırakabilirsin.
               </ThemedText>
               {COMMISSION_PLATFORMS.map((platform) => (
                 <ThemedView key={platform} style={styles.expenseRow}>
@@ -463,20 +456,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             </ThemedText>
           )}
 
-          <ThemedView type="backgroundElement" style={styles.summary}>
-            <ThemedText type="small">
-              Ondalık (%{vehicle.percentage_rate ?? 25}): {driverShare.toFixed(2)} ₺
-            </ThemedText>
-            <ThemedText type="small">Net Nakit: {netCash.toFixed(2)} ₺</ThemedText>
-          </ThemedView>
         </>
       )}
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Not (Araç Sahibine)
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-        İletmek istediğin ekstra bilgi varsa buraya yaz — isteğe bağlı.
+        Not (isteğe bağlı)
       </ThemedText>
       <TextInput
         style={[
@@ -495,7 +479,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         <Pressable
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
           onPress={() => setShowNotePhoto(true)}>
-          <ThemedText type="linkPrimary">+ Fotoğraf Eklemek İster misiniz?</ThemedText>
+          <ThemedText type="linkPrimary">+ Fotoğraf Ekle</ThemedText>
         </Pressable>
       ) : (
         <>
@@ -597,7 +581,8 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.two },
-  title: { fontSize: 28, lineHeight: 34 },
+  title: { fontSize: 28, lineHeight: 34, textAlign: 'center' },
+  centerText: { textAlign: 'center' },
   sectionTitle: { marginTop: Spacing.four },
   hint: { marginBottom: Spacing.one },
   input: {

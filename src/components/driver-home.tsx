@@ -2,6 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VehicleCard } from '@/components/vehicle-card';
@@ -12,6 +14,7 @@ import { listAssignedVehicles, type Vehicle } from '@/lib/vehicles';
 
 export function DriverHome() {
   const { profile } = useAuth();
+  const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   type CardStatus = { shift: Shift | null; cornerLabel?: string; cornerIso?: string | null };
   const [cardStatus, setCardStatus] = useState<Record<string, CardStatus>>({});
@@ -55,7 +58,7 @@ export function DriverHome() {
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.three }]}>
       <ThemedText type="title" style={styles.header}>
         Araçlarım
       </ThemedText>
@@ -81,7 +84,7 @@ export function DriverHome() {
                   vehicle={item}
                   statusActive={!!open}
                   statusLabel={open ? 'Vardiyan Açık' : 'Vardiya Kapalı'}
-                  subLabel={open ? 'Kapatmak için dokun' : 'Açmak için dokun'}
+                  subLabel={open ? 'Kapatmak için dokun' : 'Başlatmak için dokun'}
                   cornerTimeLabel={st?.cornerLabel}
                   cornerTimeIso={st?.cornerIso}
                 />

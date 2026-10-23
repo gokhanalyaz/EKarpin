@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet } from 'react
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { PhotoViewButton } from '@/components/photo-view-button';
+import { goBackOrHome } from '@/lib/navigation';
 import { SafeScreen } from '@/components/safe-screen';
 import { formatDateTime } from '@/components/shift-history-list';
 import { ThemedText } from '@/components/themed-text';
@@ -120,7 +121,7 @@ export default function NotificationsScreen() {
     <SafeScreen>
     <ThemedView style={[styles.container, styles.transparentBg]}>
       <ThemedView style={[styles.headerRow, styles.transparentBg]}>
-        <Pressable hitSlop={12} onPress={() => router.back()} style={styles.backButton}>
+        <Pressable hitSlop={12} onPress={goBackOrHome} style={styles.backButton}>
           <SymbolView name="chevron.left" size={20} tintColor={theme.text} />
         </Pressable>
         <ThemedText type="title" style={styles.header}>

@@ -104,9 +104,9 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>
-        Vardiya Aç
+        Vardiya Başlat
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
         {vehicle.plate_no}
       </ThemedText>
 
@@ -115,8 +115,7 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
       </ThemedText>
       {suggestedKm != null && (
         <ThemedText type="small" themeColor="textSecondary">
-          Önceki vardiyanın kapanış km&apos;si: {suggestedKm}. Doğruysa onaylayabilir, farklıysa
-          düzeltebilirsin.
+          Son kapanış: {suggestedKm} km
         </ThemedText>
       )}
       <TextInput
@@ -129,10 +128,7 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
       />
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
-        Km Sayacı Fotoğrafı
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-        İsteğe bağlı — sadece kameradan çekilebilir, galeriden yükleme yapılamaz.
+        Km Sayacı Fotoğrafı (isteğe bağlı)
       </ThemedText>
       {photoUri ? (
         <Image source={{ uri: photoUri }} style={styles.preview} />
@@ -159,7 +155,8 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.two },
-  title: { fontSize: 28, lineHeight: 34 },
+  title: { fontSize: 28, lineHeight: 34, textAlign: 'center' },
+  centerText: { textAlign: 'center' },
   sectionTitle: { marginTop: Spacing.four },
   hint: { marginBottom: Spacing.one },
   input: {

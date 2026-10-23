@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ShiftHistoryCard } from '@/components/shift-history-list';
+import { goBackOrHome } from '@/lib/navigation';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -93,7 +94,7 @@ export default function ShiftDetailScreen() {
     <ThemedView style={[styles.headerRow, styles.transparentBg, { paddingTop: insets.top + Spacing.two }]}>
       <Pressable
         hitSlop={12}
-        onPress={() => router.back()}
+        onPress={goBackOrHome}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
         <SymbolView name="chevron.left" size={24} tintColor={theme.text} />
       </Pressable>

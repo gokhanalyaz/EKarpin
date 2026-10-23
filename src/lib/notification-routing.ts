@@ -37,3 +37,21 @@ export function resolveNotificationRoute(data: Record<string, unknown> | undefin
   }
   return null;
 }
+
+/**
+ * Soğuk başlangıçta (uygulama kapalıyken bildirime dokunulunca) hedef
+ * ekrana doğrudan gidilirse altında hiç ekran kalmıyordu: geri tuşu ve
+ * kaydırarak geri çalışmıyordu. Artık önce ana sayfa açılıyor, hedef ekran
+ * onun üstüne itiliyor - geri basınca ana sayfaya (araçlar) dönülüyor.
+ */
+let pendingRoute: string | null = null;
+
+export function setPendingNotificationRoute(route: string | null): void {
+  pendingRoute = route;
+}
+
+export function consumePendingNotificationRoute(): string | null {
+  const route = pendingRoute;
+  pendingRoute = null;
+  return route;
+}
