@@ -22,6 +22,8 @@ export type Vehicle = {
   inspection_notice_days?: number | null;
   /** Bakım/vize hatırlatmaları o an araca ekli şoförlere de gitsin mi. */
   maintenance_notify_drivers?: boolean | null;
+  /** Doluysa araç silinmiş (arşivlenmiş): listelerde görünmez, karpin geçmişi korunur. */
+  archived_at?: string | null;
 };
 
 /** 'YYYY-MM-DD' -> yerel saatle Date (saat dilimi kaymasın diye elle). */
@@ -65,7 +67,10 @@ export function paymentModelLabel(
     : `Km (${vehicle.km_rate ?? '-'} TL/km)`;
 }
 
-export async function listOwnerVehicles(ownerId: string): Promise<Vehicle[]> {
+export async function listOwnerVehicles(
+  ownerId: string,
+  options?: { includeArchived?: boolean }
+): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from('vehicles')
     .select('*')
@@ -73,7 +78,25 @@ export async function listOwnerVehicles(ownerId: string): Promise<Vehicle[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as Vehicle[];
+  const rows = (data ?? []) as Vehicle[];
+  // Arşivlenen (silinen) araçlar sadece Geçmiş sekmesinde, karpinleri
+  // görünsün diye isteniyor; diğer tüm listelerden çıkarılıyor.
+  return options?.includeArchived ? rows : rows.filter((v) => !v.archived_at);
+}
+
+/**
+ * Aracı sil - karpin geçmişi kalsın: araç arşivlenir (listelerden kalkar),
+ * şoförler araçtan çıkarılır, bakım kayıtları ve vize takibi kaldırılır
+ * (artık hatırlatma gitmesin). Karpinler Geçmiş sekmesinde kalmaya devam eder.
+ */
+export async function archiveVehicle(vehicleId: string): Promise<void> {
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ archived_at: new Date().toISOString(), inspection_due_date: null })
+    .eq('id', vehicleId);
+  if (error) throw error;
+  await supabase.from('vehicle_drivers').delete().eq('vehicle_id', vehicleId);
+  await supabase.from('vehicle_maintenance_logs').delete().eq('vehicle_id', vehicleId);
 }
 
 export async function createVehicle(input: {

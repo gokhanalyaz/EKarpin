@@ -30,7 +30,8 @@ import {
   removeDriverFromVehicle,
   type VehicleDriverRow,
 } from '@/lib/vehicle-drivers';
-import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
+import { getAnyOpenShift } from '@/lib/shifts';
+import { archiveVehicle, deleteVehicle, listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 type VehicleGroup = { vehicle: Vehicle; drivers: VehicleDriverRow[] };
 
@@ -55,6 +56,8 @@ export default function AccountScreen() {
   const [assigning, setAssigning] = useState(false);
   const [themePref, setThemePref] = useState<ThemePreference>('system');
   const [showAppearance, setShowAppearance] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
+  const [deletingVehicle, setDeletingVehicle] = useState(false);
   const textScale = useTextScale();
 
   useEffect(() => {
@@ -93,6 +96,42 @@ export default function AccountScreen() {
       loadVehicles();
     }, [loadVehicles])
   );
+
+  async function requestDeleteVehicle(vehicle: Vehicle) {
+    const open = await getAnyOpenShift(vehicle.id).catch(() => null);
+    if (open) {
+      Alert.alert('Vardiya açık', 'Bu aracın açık bir vardiyası var. Aracı silmeden önce vardiyanın kapatılması gerekiyor.');
+      return;
+    }
+    setVehicleToDelete(vehicle);
+  }
+
+  async function performDeleteVehicle(keepHistory: boolean) {
+    if (!vehicleToDelete) return;
+    setDeletingVehicle(true);
+    try {
+      if (keepHistory) await archiveVehicle(vehicleToDelete.id);
+      else await deleteVehicle(vehicleToDelete.id);
+      setVehicleToDelete(null);
+      await loadVehicles();
+    } catch (e: any) {
+      Alert.alert('Araç silinemedi', friendlyError(e));
+    } finally {
+      setDeletingVehicle(false);
+    }
+  }
+
+  function confirmDeleteAll() {
+    if (!vehicleToDelete) return;
+    Alert.alert(
+      'Emin misin?',
+      `${vehicleToDelete.plate_no} ve bu araca ait TÜM karpin, bakım ve bildirim kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Evet, Hepsini Sil', style: 'destructive', onPress: () => performDeleteVehicle(false) },
+      ]
+    );
+  }
 
   // Apple şartı: kullanıcı hesabını uygulamanın içinden silebilmeli.
   function handleDeleteAccount() {
@@ -324,6 +363,14 @@ export default function AccountScreen() {
                     <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
                   </Pressable>
                 )}
+                <Pressable
+                  onPress={() => requestDeleteVehicle(vehicle)}
+                  style={({ pressed }) => [styles.deleteVehicleRow, { borderTopColor: theme.separator }, pressed && styles.deleteButtonPressed]}>
+                  <SymbolView name="trash" size={14} tintColor="#DC2626" />
+                  <ThemedText type="small" style={styles.deleteVehicleText}>
+                    Aracı Sil
+                  </ThemedText>
+                </Pressable>
               </GroupCard>
             ))
           )}
@@ -350,6 +397,34 @@ export default function AccountScreen() {
         </ThemedText>
       </Pressable>
     </ScrollView>
+
+    <ActionSheetModal
+      visible={!!vehicleToDelete}
+      onClose={() => !deletingVehicle && setVehicleToDelete(null)}
+      title="Aracı Sil"
+      description={`${vehicleToDelete?.plate_no ?? 'Bu araç'} silinecek. Araca ait karpin geçmişi ne olsun?`}>
+      <Pressable
+        disabled={deletingVehicle}
+        onPress={() => performDeleteVehicle(true)}
+        style={({ pressed }) => [styles.sheetPrimary, (pressed || deletingVehicle) && styles.buttonPressed]}>
+        <ThemedText style={styles.buttonText}>Karpin Geçmişi Kalsın, Aracı Sil</ThemedText>
+      </Pressable>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.sheetHint}>
+        Araç listelerden kalkar, şoförler araçtan çıkarılır. Geçmiş karpinler Geçmiş sekmesinde &quot;(silindi)&quot;
+        olarak görünmeye devam eder.
+      </ThemedText>
+      <Pressable
+        disabled={deletingVehicle}
+        onPress={confirmDeleteAll}
+        style={({ pressed }) => [styles.sheetDanger, (pressed || deletingVehicle) && styles.buttonPressed]}>
+        <ThemedText style={styles.sheetDangerText}>Aracı ve Tüm Geçmişini Sil</ThemedText>
+      </Pressable>
+      <Pressable style={styles.sheetCancel} onPress={() => setVehicleToDelete(null)}>
+        <ThemedText type="small" themeColor="textSecondary">
+          Vazgeç
+        </ThemedText>
+      </Pressable>
+    </ActionSheetModal>
 
     <ActionSheetModal visible={showAppearance} onClose={() => setShowAppearance(false)} title="Görünüm">
       <ThemedText type="eyebrow" style={styles.sheetLabel}>
@@ -475,6 +550,26 @@ const styles = StyleSheet.create({
   },
   signOutButtonPressed: { opacity: 0.6 },
   legalCard: { marginTop: Spacing.five },
+  deleteVehicleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: Spacing.two,
+    paddingTop: Spacing.three,
+  },
+  deleteVehicleText: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold },
+  sheetPrimary: { backgroundColor: Brand.primary, borderRadius: 12, paddingVertical: Spacing.three, alignItems: 'center' },
+  sheetDanger: {
+    backgroundColor: 'rgba(220,38,38,0.1)',
+    borderRadius: 12,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    marginTop: Spacing.two,
+  },
+  sheetDangerText: { color: '#DC2626', fontFamily: FontFamily.bodyBold, fontSize: 16 },
+  sheetCancel: { alignItems: 'center', paddingVertical: Spacing.two },
   deleteAccount: { alignItems: 'center', paddingVertical: Spacing.three, marginTop: Spacing.three },
   deleteAccountText: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold },
   signOutButtonText: { color: '#DC2626', fontFamily: FontFamily.bodyBold, fontSize: 16 },

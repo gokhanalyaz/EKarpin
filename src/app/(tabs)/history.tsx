@@ -87,7 +87,7 @@ export default function HistoryScreen() {
   useEffect(() => {
     if (!profile) return;
     setVehiclesLoading(true);
-    const loader = isOwner ? listOwnerVehicles(profile.id) : listAssignedVehicles(profile.id);
+    const loader = isOwner ? listOwnerVehicles(profile.id, { includeArchived: true }) : listAssignedVehicles(profile.id);
     loader
       .then((rows) => setVehicles(rows))
       .catch(() => {})
@@ -245,7 +245,7 @@ export default function HistoryScreen() {
         {vehicles.map((v) => (
           <Chip
             key={v.id}
-            label={v.plate_no}
+            label={v.archived_at ? `${v.plate_no} (silindi)` : v.plate_no}
             active={selectedVehicleId === v.id}
             onPress={() => setSelectedVehicleId(v.id)}
           />
