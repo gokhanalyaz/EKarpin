@@ -431,21 +431,26 @@ export default function MaintenanceScreen() {
             )}
 
             {/* Bakım geçmişi */}
+            {/* Büyük, açıklamalı "bakım ekle" butonu - ne ekleneceği belli olsun */}
+            <Pressable onPress={openAddForm} style={({ pressed }) => [styles.addBigButton, pressed && styles.pressed]}>
+              <View style={styles.addBigIcon}>
+                <SymbolView name="plus" size={20} tintColor={Brand.primary} />
+              </View>
+              <View style={styles.addBigTextWrap}>
+                <ThemedText style={styles.addBigTitle}>Yeni Bakım Kaydı Ekle</ThemedText>
+                <ThemedText style={styles.addBigSubtitle}>Yağ, lastik, fren, periyodik bakım veya diğer</ThemedText>
+              </View>
+            </Pressable>
+
             <View style={styles.historyHeader}>
               <ThemedText type="eyebrow">Bakım Geçmişi</ThemedText>
-              <Pressable hitSlop={10} onPress={openAddForm} style={({ pressed }) => [styles.addLink, pressed && styles.pressed]}>
-                <SymbolView name="plus.circle.fill" size={18} tintColor={Brand.primaryPressed} />
-                <ThemedText type="smallBold" style={styles.addLinkText}>
-                  Ekle
-                </ThemedText>
-              </Pressable>
             </View>
 
             {logs.length === 0 ? (
               <GroupCard style={styles.emptyCard}>
                 <SymbolView name="wrench.and.screwdriver" size={30} tintColor={theme.textSecondary} />
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Henüz bakım kaydı yok. İlk kaydı ekle, sırası gelince hatırlatalım.
+                  Henüz bakım kaydı yok. Yukarıdaki sarı butondan ilk kaydı ekle, sırası gelince hatırlatalım.
                 </ThemedText>
               </GroupCard>
             ) : (
@@ -743,8 +748,28 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.one,
   },
-  addLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addLinkText: { color: Brand.primaryPressed },
+  addBigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    backgroundColor: Brand.primary,
+    borderRadius: 16,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    marginTop: Spacing.four,
+  },
+  addBigIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Brand.onPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBigTextWrap: { alignItems: 'flex-start' },
+  addBigTitle: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 17, lineHeight: 22 },
+  addBigSubtitle: { color: Brand.onPrimary, fontFamily: FontFamily.body, fontSize: 13, lineHeight: 18, opacity: 0.8 },
   emptyCard: { alignItems: 'center', padding: Spacing.four, gap: Spacing.two },
   emptyText: { textAlign: 'center' },
   logRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 14 },
