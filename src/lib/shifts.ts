@@ -351,6 +351,28 @@ export async function closeShift(
       }
     }
   } else {
+    // Km sisteminde de hasılat, kredi kartı, motorin ve masraflar KAYIT
+    // olarak tutulur (raporlarda görünür) ama km borcunu etkilemez.
+    const kmOtherExpenses = input.expenseItems
+      ? input.expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+      : 0;
+    Object.assign(update, {
+      total_amount: input.totalAmount ?? null,
+      fuel_cost: input.fuelCost ?? 0,
+      other_expenses: kmOtherExpenses,
+      other_expenses_note: input.expenseItems?.find((item) => item.category === 'diger' && item.note)?.note ?? null,
+      expense_items: input.expenseItems ?? null,
+      card_amount: input.cardAmount ?? 0,
+    });
+    if (input.fuelReceiptUri) {
+      try {
+        const receiptPath = await uploadShiftPhoto(shift.id, input.fuelReceiptUri, 'fuel-receipt');
+        Object.assign(update, { fuel_receipt_url: receiptPath });
+      } catch (e: any) {
+        console.warn('Motorin fişi yüklenemedi', e);
+      }
+    }
+
     const kmRate = input.vehicle.km_rate ?? 0;
     let kmDiscount = 0;
 

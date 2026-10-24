@@ -210,25 +210,35 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
           photoPath={s.closing_km_photo_url}
         />
 
+        {/* Hasılat / kart / motorin / masraflar her iki sistemde de kayıt olarak gösterilir */}
+        {(isPercentage || s.total_amount != null) && (
+          <DetailRow label={isPercentage ? 'Hasılat (Tutar)' : 'Hasılat'} value={formatTL(s.total_amount)} />
+        )}
+        {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
+        {(isPercentage || (s.fuel_cost ?? 0) > 0) && (
+          <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} photoPath={s.fuel_receipt_url} />
+        )}
+        {s.expense_items && s.expense_items.length > 0 ? (
+          <>
+            {s.expense_items.map((item, idx) => (
+              <DetailRow
+                key={idx}
+                label={
+                  item.category === 'uygulama_komisyonu' && item.note
+                    ? `Komisyon (${item.note})`
+                    : expenseCategoryLabel(item.category)
+                }
+                value={formatTL(item.amount)}
+              />
+            ))}
+            <DetailRow label="Masraf" value={masrafValue} emphasize />
+          </>
+        ) : isPercentage ? (
+          <DetailRow label="Masraf" value={masrafValue} />
+        ) : null}
+
         {isPercentage ? (
           <>
-            <DetailRow label="Hasılat (Tutar)" value={formatTL(s.total_amount)} />
-            {hasCard && <DetailRow label="Kredi Kartı" value={formatTL(s.card_amount)} />}
-            <DetailRow label="Motorin" value={formatTL(s.fuel_cost)} photoPath={s.fuel_receipt_url} />
-            {s.expense_items && s.expense_items.length > 0 ? (
-              <>
-                {s.expense_items.map((item, idx) => (
-                  <DetailRow
-                    key={idx}
-                    label={expenseCategoryLabel(item.category)}
-                    value={formatTL(item.amount)}
-                  />
-                ))}
-                <DetailRow label="Masraf" value={masrafValue} emphasize />
-              </>
-            ) : (
-              <DetailRow label="Masraf" value={masrafValue} />
-            )}
             <DetailRow label="Ondalık (Şoför Payı)" value={formatTL(s.driver_share)} />
             <DetailRow label="Net Kalan" value={formatTL(s.owner_total)} emphasize last={!hasCard} />
             {hasCard && <DetailRow label="Nakit Tutar" value={formatTL(s.net_cash)} emphasize last />}

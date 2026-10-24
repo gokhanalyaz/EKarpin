@@ -61,7 +61,6 @@ const EXPENSE_COLUMNS = EXPENSE_CATEGORIES.map((c) => ({ key: c.key, label: c.la
 function buildExpenseBreakdown(s: Shift): { amounts: Record<string, number>; notes: Record<string, string> } {
   const amounts: Record<string, number> = {};
   const notes: Record<string, string> = {};
-  if (s.payment_model !== 'percentage') return { amounts, notes };
   const items = s.expense_items ?? [];
   if (items.length === 0 && (Number(s.other_expenses) || 0) > 0) {
     // Eski kayıtlar: döküm yok, toplam masraf "Diğer"e yazılır.
@@ -128,11 +127,12 @@ function buildExportRows(shifts: Shift[], driverNames: Record<string, string>): 
     openingKm: s.opening_km,
     closingKm: s.closing_km,
     totalKm: s.km_total,
-    revenue: s.payment_model === 'percentage' ? s.total_amount : null,
-    card: s.payment_model === 'percentage' ? s.card_amount : null,
-    fuel: s.payment_model === 'percentage' ? s.fuel_cost : null,
-    expenseAmount: s.payment_model === 'percentage' ? s.other_expenses : null,
-    expenseNote: s.payment_model === 'percentage' ? s.other_expenses_note : null,
+    // Hasılat, kart, motorin ve masraflar her iki sistemde de kayıt olarak tutuluyor.
+    revenue: s.total_amount,
+    card: s.card_amount,
+    fuel: s.fuel_cost,
+    expenseAmount: s.other_expenses,
+    expenseNote: s.other_expenses_note,
     ...(() => {
       const b = buildExpenseBreakdown(s);
       return { expenseByCategory: b.amounts, expenseNotesByCategory: b.notes };
@@ -250,7 +250,7 @@ export async function exportShiftsToExcel(
       r.revenue ?? '',
       r.card ?? '',
       r.fuel ?? '',
-      ...EXPENSE_COLUMNS.map((c) => (r.system === 'percentage' ? r.expenseByCategory[c.key] ?? 0 : '')),
+      ...EXPENSE_COLUMNS.map((c) => r.expenseByCategory[c.key] ?? 0),
       r.expenseAmount ?? '',
       expenseNotesText(r),
       r.driverShare ?? '',

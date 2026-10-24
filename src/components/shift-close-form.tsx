@@ -196,11 +196,11 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
           closingKm: kmValue,
           photoUri,
           handedToDriverId: handedTo,
-          totalAmount: isPercentage ? num(totalAmount) : undefined,
-          fuelCost: isPercentage ? num(fuelCost) : undefined,
-          fuelReceiptUri: isPercentage && fuelReceiptUri ? fuelReceiptUri : undefined,
-          expenseItems: isPercentage
-            ? (enabledExpenseCategories
+          // Hasılat, motorin, kart ve masraflar her iki sistemde de kaydedilir.
+          totalAmount: totalAmount.trim() ? num(totalAmount) : isPercentage ? 0 : undefined,
+          fuelCost: num(fuelCost),
+          fuelReceiptUri: fuelReceiptUri ?? undefined,
+          expenseItems: enabledExpenseCategories
                 .map((cat): ExpenseItem | null => {
                   const amount = num(expenseAmounts[cat.key] ?? '');
                   if (amount <= 0) return null;
@@ -218,9 +218,8 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
                         return amount > 0 ? { category: 'uygulama_komisyonu', amount, note: platform } : null;
                       }).filter((item): item is ExpenseItem => item !== null)
                     : []
-                ))
-            : undefined,
-          cardAmount: isPercentage ? num(cardAmount) : undefined,
+                ),
+          cardAmount: num(cardAmount),
           notes: notes.trim() ? notes.trim() : undefined,
           notesPhotoUri: notePhotoUri,
           kmDiscount: !isPercentage && kmDiscountValue > 0 ? kmDiscountValue : undefined,
@@ -333,10 +332,9 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
         </ThemedText>
       </Pressable>
 
-      {isPercentage && (
-        <>
+      <>
           <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Tutar (Hasılat)
+            {isPercentage ? 'Tutar (Hasılat)' : 'Hasılat (isteğe bağlı)'}
           </ThemedText>
           <TextInput
             style={[styles.input, { color: theme.text, borderColor: theme.backgroundSelected }]}
@@ -456,8 +454,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
             </ThemedText>
           )}
 
-        </>
-      )}
+      </>
 
       <ThemedText type="smallBold" style={styles.sectionTitle}>
         Not (isteğe bağlı)
