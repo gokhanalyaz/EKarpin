@@ -148,10 +148,10 @@ export default function ShiftDetailScreen() {
                     state,
                     label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
                     onConfirm: canAct ? handleConfirmSettlement : undefined,
-                    confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+                    confirmTitle: isOwner ? 'Teslim Aldın mı?' : 'Teslim Ettin mi?',
                     confirmMessage: isOwner
-                      ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
-                      : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+                      ? `${numLabel} teslim aldığını onaylıyor musun?`
+                      : `${numLabel} teslim ettiğini onaylıyor musun?`,
                     confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
                   };
                 })()

@@ -145,15 +145,15 @@ export type MaintenanceReminder = {
 
 function kmReminderMessage(status: MaintenanceStatus): string {
   return status.overdue
-    ? `Zamanı geçti - ${status.nextDueKm} km'de yapılması gerekiyordu (${Math.abs(status.remainingKm ?? 0).toFixed(0)} km geçti).`
-    : `Yaklaşıyor - ${status.remainingKm?.toFixed(0)} km sonra (${status.nextDueKm} km'de).`;
+    ? `Zamanı geçti. ${status.nextDueKm?.toLocaleString('tr-TR')} km'de yapılması gerekiyordu.`
+    : `Zamanına ${status.remainingKm?.toFixed(0)} km kaldı.`;
 }
 
 export function inspectionMessage(status: InspectionStatus): string {
   const date = status.dueDate.toLocaleDateString('tr-TR');
-  if (status.overdue) return `Vize süresi ${Math.abs(status.daysLeft)} gün önce doldu (${date}).`;
-  if (status.daysLeft === 0) return `Vize için bugün son gün (${date}).`;
-  return `Vizeye ${status.daysLeft} gün kaldı (${date}).`;
+  if (status.overdue) return `Vize süresi ${Math.abs(status.daysLeft)} gün önce, ${date} tarihinde doldu.`;
+  if (status.daysLeft === 0) return `Vize için bugün son gün.`;
+  return `Vizeye ${status.daysLeft} gün kaldı. Son gün: ${date}.`;
 }
 
 /**

@@ -160,7 +160,7 @@ export function ShiftCloseForm({ shift, vehicle, onClosed }: Props) {
 
   async function handleClose() {
     if (!closingKm || Number.isNaN(kmValue)) {
-      Alert.alert('Km gerekli', 'Geçerli bir kapanış km değeri girin.');
+      Alert.alert('Km gerekli', 'Geçerli bir kapanış km değeri gir.');
       return;
     }
     if (shift.opening_km != null && kmValue < shift.opening_km) {

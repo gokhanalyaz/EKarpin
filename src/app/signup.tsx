@@ -179,7 +179,7 @@ export default function SignupScreen() {
             onPress={handleSignup}
             disabled={submitting}>
             <ThemedText style={styles.buttonText}>
-              {submitting ? 'Kayıt olunuyor...' : 'Kayıt Ol'}
+              {submitting ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
             </ThemedText>
           </Pressable>
 

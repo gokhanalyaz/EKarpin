@@ -55,14 +55,14 @@ begin
           remaining := (r.km_at_service + r.interval_km) - current_km;
           if remaining <= r.reminder_buffer_km then
             label := case r.type
-              when 'lastik' then 'Lastik Değişimi'
-              when 'yag' then 'Yağ Bakımı'
-              when 'periyodik' then 'Periyodik Bakım'
-              when 'fren' then 'Fren Bakımı'
-              else 'Bakım' end;
-            items := items || (label || case
-              when remaining <= 0 then ' (zamanı geçti)'
-              else ' (' || remaining::int || ' km kaldı)' end);
+              when 'lastik' then 'Lastik değişiminin'
+              when 'yag' then 'Yağ bakımının'
+              when 'periyodik' then 'Periyodik bakımın'
+              when 'fren' then 'Fren bakımının'
+              else 'Bakımın' end;
+            items := items || (case
+              when remaining <= 0 then label || ' zamanı geçti.'
+              else label || ' zamanına ' || remaining::int || ' km kaldı.' end);
           end if;
         end if;
       end loop;
@@ -72,9 +72,9 @@ begin
       days_left := v.inspection_due_date - (now() at time zone 'Europe/Istanbul')::date;
       if days_left <= coalesce(v.inspection_notice_days, 10) then
         items := items || (case
-          when days_left < 0 then 'Vize (' || abs(days_left) || ' gün geçti)'
-          when days_left = 0 then 'Vize (bugün son gün)'
-          else 'Vize (' || days_left || ' gün kaldı)' end);
+          when days_left < 0 then 'Vize süresi ' || abs(days_left) || ' gün önce doldu.'
+          when days_left = 0 then 'Vize için bugün son gün.'
+          else 'Vizeye ' || days_left || ' gün kaldı.' end);
       end if;
     end if;
 
@@ -96,8 +96,8 @@ begin
       messages := messages || jsonb_build_array(jsonb_build_object(
         'to', t,
         'sound', 'default',
-        'title', v.plate_no || ' - Bakım Hatırlatması',
-        'body', array_to_string(items, ', ') || '. Yapıldıysa uygulamadan işaretlemeyi unutma.',
+        'title', v.plate_no || ' · Bakım Hatırlatması',
+        'body', array_to_string(items, ' ') || ' Yapıldıysa uygulamadan işaretle.',
         'data', jsonb_build_object('type', 'maintenance_reminder', 'vehicleId', v.id)
       ));
       sent := sent + 1;

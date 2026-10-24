@@ -64,7 +64,7 @@ export async function uploadShiftPhoto(
   }
   const arrayBuffer = await file.arrayBuffer();
   if (!arrayBuffer || arrayBuffer.byteLength === 0) {
-    throw new Error('Fotoğraf dosyası boş okundu (0 byte).');
+    throw new Error('Fotoğraf okunamadı, lütfen tekrar çek.');
   }
 
   const { error } = await supabase.storage

@@ -287,7 +287,7 @@ export function ShiftHistoryCard({ shift: s, driverName, vehiclePlate, vehicle, 
             <Pressable onPress={() => {}}>
               <ThemedView type="backgroundElement" style={styles.confirmCard}>
                 <ThemedText type="subtitle" style={styles.confirmTitle}>
-                  {settlement.confirmTitle ?? 'Emin misiniz?'}
+                  {settlement.confirmTitle ?? 'Emin misin?'}
                 </ThemedText>
                 <ThemedText type="title" style={styles.confirmAmount}>
                   {formatTL(settlementAmount(s))}
@@ -600,10 +600,10 @@ export function ShiftHistoryList({ vehicle, showFilters, title }: Props) {
                 state,
                 label: getSettlementLabel(state, isOwner ? 'owner' : 'driver'),
                 onConfirm: canAct ? () => handleConfirmOne(s) : undefined,
-                confirmTitle: isOwner ? 'Teslim Aldınız mı?' : 'Teslim Ettiniz mi?',
+                confirmTitle: isOwner ? 'Teslim Aldın mı?' : 'Teslim Ettin mi?',
                 confirmMessage: isOwner
-                  ? `${numLabel} teslim aldığınızı onaylıyor musunuz?`
-                  : `${numLabel} teslim ettiğinizi onaylıyor musunuz?`,
+                  ? `${numLabel} teslim aldığını onaylıyor musun?`
+                  : `${numLabel} teslim ettiğini onaylıyor musun?`,
                 confirmButtonLabel: isOwner ? 'Teslim Aldım' : 'Teslim Ettim',
               }}
             />

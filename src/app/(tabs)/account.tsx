@@ -168,7 +168,7 @@ export default function AccountScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinize emin misiniz?', [
+    Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       { text: 'Çıkış Yap', style: 'destructive', onPress: signOut },
     ]);
@@ -187,7 +187,7 @@ export default function AccountScreen() {
 
   async function handleAssign(vehicleId: string) {
     if (phone.length !== 10) {
-      Alert.alert('Eksik bilgi', 'Şoförün telefon numarasını eksiksiz girin.');
+      Alert.alert('Eksik bilgi', 'Şoförün telefon numarasını eksiksiz gir.');
       return;
     }
     setAssigning(true);

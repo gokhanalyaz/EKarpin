@@ -71,7 +71,7 @@ export default function NotificationsScreen() {
   );
 
   function handleDeletePress(alert: VehicleAlert) {
-    Alert.alert('Bildirimi Sil', 'Bu bildirim kalıcı olarak silinecek, tekrar geri gelmeyecek. Devam edilsin mi?', [
+    Alert.alert('Bildirimi Sil', 'Bu bildirim kalıcı olarak silinecek. Devam edilsin mi?', [
       { text: 'Vazgeç', onPress: () => swipeableRefs.current[alert.id]?.close() },
       {
         text: 'Sil',

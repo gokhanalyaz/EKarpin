@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet } from 'react-native';
 
 import { PhoneInput } from '@/components/phone-input';
 import { ThemedText } from '@/components/themed-text';
@@ -15,7 +15,7 @@ export default function ForgotPasswordScreen() {
 
   async function handleSend() {
     if (phone.length !== 10) {
-      Alert.alert('Eksik bilgi', 'Telefon numarasını eksiksiz girin.');
+      Alert.alert('Eksik bilgi', 'Telefon numaranı eksiksiz gir.');
       return;
     }
 
@@ -35,9 +35,18 @@ export default function ForgotPasswordScreen() {
     // sifirlama calismiyor. Bu durumda kullaniciyi yonlendiriyoruz.
     if (foundEmail.endsWith('@dijitalkarpin.app')) {
       setSubmitting(false);
+      // Geçici çözüm: otomatik SMS/e-posta sıfırlama eklenene kadar destek
+      // ekibi WhatsApp üzerinden şifreyi sıfırlıyor.
       Alert.alert(
-        'Otomatik sıfırlama şu an yok',
-        'Bu hesap için şifre sıfırlama bağlantısı otomatik gönderilemiyor. Lütfen uygulama sahibiyle iletişime geç, şifreni elle sıfırlasın.'
+        'Şifreni sıfırlayalım',
+        'Destek ekibimize WhatsApp\'tan yaz, şifreni hemen sıfırlayalım.',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: "WhatsApp'tan Yaz",
+            onPress: () => Linking.openURL('https://wa.me/905422498372').catch(() => {}),
+          },
+        ]
       );
       return;
     }

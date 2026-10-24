@@ -19,7 +19,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (phone.length !== 10 || !password) {
-      Alert.alert('Eksik bilgi', 'Telefon numarası ve şifre girin.');
+      Alert.alert('Eksik bilgi', 'Telefon numaranı ve şifreni gir.');
       return;
     }
 

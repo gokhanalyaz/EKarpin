@@ -57,7 +57,7 @@ export function ShiftOpenForm({ vehicle, onOpened }: Props) {
   async function handleStart() {
     const kmValue = Number(km.replace(',', '.'));
     if (!km || Number.isNaN(kmValue) || kmValue < 0) {
-      Alert.alert('Km gerekli', 'Geçerli bir açılış km değeri girin.');
+      Alert.alert('Km gerekli', 'Geçerli bir açılış km değeri gir.');
       return;
     }
     if (!profile) return;

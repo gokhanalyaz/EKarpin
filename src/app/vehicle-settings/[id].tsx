@@ -188,7 +188,7 @@ export default function VehicleSettingsScreen() {
       const raw = percentageRateInput.trim();
       const parsed = Number(raw.replace(',', '.'));
       if (!raw || Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
-        Alert.alert('Geçersiz değer', 'Şoför payını 0-100 arasında bir yüzde olarak girin.');
+        Alert.alert('Geçersiz değer', 'Şoför payını 0 ile 100 arasında bir yüzde olarak gir.');
         return;
       }
       percentageRate = parsed;
@@ -196,7 +196,7 @@ export default function VehicleSettingsScreen() {
       const raw = kmRateInput.trim();
       const parsed = Number(raw.replace(',', '.'));
       if (!raw || Number.isNaN(parsed) || parsed <= 0) {
-        Alert.alert('Geçersiz değer', 'Km başına ücreti geçerli bir sayı olarak girin.');
+        Alert.alert('Geçersiz değer', 'Km başına ücreti geçerli bir sayı olarak gir.');
         return;
       }
       kmRate = parsed;
@@ -366,7 +366,7 @@ export default function VehicleSettingsScreen() {
   async function handleAssign() {
     if (!id) return;
     if (phone.length !== 10) {
-      Alert.alert('Eksik bilgi', 'Şoförün telefon numarasını eksiksiz girin.');
+      Alert.alert('Eksik bilgi', 'Şoförün telefon numarasını eksiksiz gir.');
       return;
     }
     setAssigning(true);
@@ -457,7 +457,7 @@ export default function VehicleSettingsScreen() {
             />
           ))}
         </GroupCard>
-        <GroupFooter>Açık olan kalemler, şoför vardiya kapatırken masraf olarak seçebileceği seçeneklerde görünür.</GroupFooter>
+        <GroupFooter>Açık olan kalemleri şoför, vardiya kapatırken masraf olarak girebilir.</GroupFooter>
 
         <ThemedText type="eyebrow" style={styles.sectionTitle}>
           Bakım Bildirimleri
@@ -624,7 +624,7 @@ export default function VehicleSettingsScreen() {
         description={
           hasOpenShift
             ? 'Bu aracın şu an açık bir vardiyası var. Çalışma sistemini değiştirebilmek için önce vardiyanın kapatılması gerekiyor.'
-            : 'Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler - geçmiş karpinler kayıt edildikleri sistemde görünmeye devam eder.'
+            : 'Bu değişiklik yalnızca bundan sonra açılacak vardiyaları etkiler - geçmiş karpinler kaydedildikleri sistemle görünmeye devam eder.'
         }>
         <ThemedView style={[styles.roleRow, styles.transparentBg]}>
           <Pressable
@@ -693,7 +693,7 @@ export default function VehicleSettingsScreen() {
         title="Şoförü Kaldır"
         description={`${removeTarget?.driver?.full_name ?? 'Bu şoför'} bu araçtan kaldırılacak. Bu şoförün karpinleri ne olsun?`}>
         <Pressable style={[styles.sheetButton, styles.sheetButtonPrimary]} onPress={handleKeepShiftsAndRemove}>
-          <ThemedText style={styles.sheetButtonPrimaryText}>Karpinler Kalsın, Kaldır</ThemedText>
+          <ThemedText style={styles.sheetButtonPrimaryText}>Karpinler Kalsın, Şoförü Kaldır</ThemedText>
         </Pressable>
         <Pressable
           style={styles.sheetButton}

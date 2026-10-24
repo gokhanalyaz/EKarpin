@@ -51,11 +51,11 @@ export default function AddVehicleScreen() {
     if (!profile) return;
 
     if (!plateNo.trim()) {
-      Alert.alert('Eksik bilgi', 'Plaka girin.');
+      Alert.alert('Eksik bilgi', 'Plakayı gir.');
       return;
     }
     if (paymentModel === 'km_based' && !kmRate.trim()) {
-      Alert.alert('Eksik bilgi', 'Km başına ücret girin.');
+      Alert.alert('Eksik bilgi', 'Km başına ücreti gir.');
       return;
     }
     if (!registrationUri) {

@@ -420,8 +420,8 @@ export default function MaintenanceScreen() {
                     title={maintenanceTypeLabel(s.log.type)}
                     message={
                       s.overdue
-                        ? `Zamanı geçti - ${s.nextDueKm} km'de yapılması gerekiyordu.`
-                        : `${s.remainingKm?.toFixed(0)} km kaldı (${s.nextDueKm} km'de).`
+                        ? `Zamanı geçti. ${s.nextDueKm?.toLocaleString('tr-TR')} km'de yapılması gerekiyordu.`
+                        : `Zamanına ${s.remainingKm?.toFixed(0)} km kaldı.`
                     }
                     color={statusColor(s)}
                     onDone={() => handleMarkDone(s)}
@@ -488,7 +488,7 @@ export default function MaintenanceScreen() {
                         {status.nextDueKm != null && (
                           <ThemedText type="small" style={[styles.logNext, { color }]}>
                             {status.overdue
-                              ? `Zamanı geçti (${status.nextDueKm} km)`
+                              ? `Zamanı geçti, ${status.nextDueKm.toLocaleString('tr-TR')} km'de yapılmalıydı`
                               : `Sıradaki: ${status.nextDueKm.toLocaleString('tr-TR')} km · ${status.remainingKm?.toFixed(0)} km kaldı`}
                           </ThemedText>
                         )}
