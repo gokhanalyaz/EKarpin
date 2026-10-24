@@ -5,7 +5,7 @@
 -- kullanici kodu + yeni sifreyi girer -> confirm_password_reset() kodu
 -- dogrular ve sifreyi degistirir.
 --
--- SMS saglayicisi (orn. Netgsm) bilgileri sms_provider_config tablosunda
+-- SMS saglayicisi (SenaGSM, HTTP GET API) bilgileri sms_provider_config tablosunda
 -- tutulur; bu tablo uygulamadan OKUNAMAZ (RLS, politika yok). Saglayici
 -- hesabi acilinca sadece bu tablo doldurulur, uygulama guncellemesi gerekmez.
 -- enabled = false iken uygulama kullaniciyi WhatsApp destek hattina yonlendirir.
@@ -27,12 +27,11 @@ alter table public.password_reset_codes enable row level security;
 create table if not exists public.sms_provider_config (
   id integer primary key default 1 check (id = 1),
   enabled boolean not null default false,
-  url text,
-  headers jsonb not null default '{}'::jsonb,
-  -- JSON govde sablonu. Kullanilabilir yer tutucular:
-  -- {{phone}} = 905XXXXXXXXX, {{phone10}} = 5XXXXXXXXX, {{message}} = mesaj metni
-  body_template text
+  -- SenaGSM HTTP GET adresi sablonu. Yer tutucular:
+  -- {{phone}} = 905XXXXXXXXX, {{phone10}} = 5XXXXXXXXX, {{message}} = URL-kodlu mesaj
+  url_template text
 );
+alter table public.sms_provider_config add column if not exists url_template text;
 alter table public.sms_provider_config enable row level security;
 insert into public.sms_provider_config (id) values (1) on conflict (id) do nothing;
 
@@ -47,10 +46,10 @@ declare
   rec public.password_reset_codes;
   v_code text;
   v_message text;
-  v_body text;
+  v_url text;
 begin
   select * into cfg from public.sms_provider_config where id = 1;
-  if cfg is null or not cfg.enabled or cfg.url is null or cfg.body_template is null then
+  if cfg is null or not cfg.enabled or cfg.url_template is null then
     return 'disabled';
   end if;
 
@@ -68,7 +67,7 @@ begin
     end if;
   end if;
 
-  v_code := lpad(((('x' || encode(gen_random_bytes(4), 'hex'))::bit(32)::bigint) % 1000000)::text, 6, '0');
+  v_code := lpad(floor(random() * 1000000)::int::text, 6, '0');
 
   insert into public.password_reset_codes (phone, code_hash, expires_at, attempts, sent_count, window_start, last_sent_at)
   values (p_phone, crypt(v_code, gen_salt('bf')), now() + interval '10 minutes', 0, 1, now(), now())
@@ -82,13 +81,16 @@ begin
                         then password_reset_codes.window_start else now() end,
     last_sent_at = now();
 
-  v_message := 'Dijital Karpin sifre sifirlama kodunuz: ' || v_code || '. Kodu kimseyle paylasmayin.';
-  v_body := replace(replace(replace(cfg.body_template,
+  -- Turkce karakter yok (tek SMS, Ingilizce karakter limiti); URL icin
+  -- bosluk ve iki nokta kodlaniyor.
+  v_message := 'Dijital Karpin sifre sifirlama kodunuz: ' || v_code || ' Kodu kimseyle paylasmayin.';
+  v_message := replace(replace(v_message, ' ', '%20'), ':', '%3A');
+  v_url := replace(replace(replace(cfg.url_template,
               '{{phone}}', p_phone),
               '{{phone10}}', right(p_phone, 10)),
               '{{message}}', v_message);
 
-  perform net.http_post(url := cfg.url, body := v_body::jsonb, headers := cfg.headers);
+  perform net.http_get(url := v_url);
   return 'sent';
 end;
 $$;
