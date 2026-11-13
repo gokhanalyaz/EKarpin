@@ -7,7 +7,7 @@ import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, St
 import { SafeScreen } from '@/components/safe-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { friendlyError } from '@/lib/errors';
@@ -136,26 +136,29 @@ export default function AddVehicleScreen() {
         />
 
         <ThemedText type="smallBold">Çalışma Sistemi</ThemedText>
-        <ThemedView style={styles.roleRow}>
+        {/* İki seçenek yan yana, net ayrılan bir seçim kutusu */}
+        <ThemedView style={[styles.roleRow, { backgroundColor: theme.subtleFill }]}>
           <Pressable
             style={[
               styles.roleButton,
-              { borderColor: theme.backgroundSelected },
               paymentModel === 'percentage' && styles.roleButtonActive,
             ]}
             onPress={() => setPaymentModel('percentage')}>
-            <ThemedText style={paymentModel === 'percentage' ? styles.roleTextActive : undefined}>
+            <ThemedText
+              themeColor={paymentModel === 'percentage' ? undefined : 'textSecondary'}
+              style={paymentModel === 'percentage' ? styles.roleTextActive : styles.roleText}>
               Yüzdelik
             </ThemedText>
           </Pressable>
           <Pressable
             style={[
               styles.roleButton,
-              { borderColor: theme.backgroundSelected },
               paymentModel === 'km_based' && styles.roleButtonActive,
             ]}
             onPress={() => setPaymentModel('km_based')}>
-            <ThemedText style={paymentModel === 'km_based' ? styles.roleTextActive : undefined}>
+            <ThemedText
+              themeColor={paymentModel === 'km_based' ? undefined : 'textSecondary'}
+              style={paymentModel === 'km_based' ? styles.roleTextActive : styles.roleText}>
               Km Sistemi
             </ThemedText>
           </Pressable>
@@ -218,16 +221,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  roleRow: { flexDirection: 'row', gap: Spacing.two },
+  roleRow: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 14 },
   roleButton: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  roleButtonActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  roleTextActive: { color: Brand.onPrimary, fontWeight: '700' },
+  roleButtonActive: { backgroundColor: Brand.primary },
+  roleText: { fontFamily: FontFamily.bodySemiBold },
+  roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   button: {
     backgroundColor: Brand.primary,
     borderRadius: Spacing.two,

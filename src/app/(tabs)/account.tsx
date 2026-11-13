@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text } from 'react-native';
 
 import { ActionSheetModal } from '@/components/action-sheet-modal';
@@ -51,6 +51,9 @@ export default function AccountScreen() {
 
   const [groups, setGroups] = useState<VehicleGroup[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
+  // Sadece ilk açılışta yükleniyor göstergesi: geri dönünce liste yerinde
+  // kalsın, sayfa en üste zıplamasın.
+  const hasLoadedRef = useRef(false);
   const [addingForVehicle, setAddingForVehicle] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
@@ -74,7 +77,7 @@ export default function AccountScreen() {
       setLoadingVehicles(false);
       return;
     }
-    setLoadingVehicles(true);
+    if (!hasLoadedRef.current) setLoadingVehicles(true);
     try {
       const vehicles = await listOwnerVehicles(profile.id);
       const withDrivers = await Promise.all(
@@ -88,6 +91,7 @@ export default function AccountScreen() {
       console.warn('Araçlar yüklenemedi', e);
     } finally {
       setLoadingVehicles(false);
+      hasLoadedRef.current = true;
     }
   }, [profile, isOwner]);
 
@@ -249,6 +253,13 @@ export default function AccountScreen() {
     }
   }
 
+  const initials = (profile?.full_name ?? '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toLocaleUpperCase('tr-TR'))
+    .join('');
+
   return (
     <SafeScreen>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
@@ -256,85 +267,86 @@ export default function AccountScreen() {
         Hesabım
       </ThemedText>
 
-      <GroupCard style={styles.card}>
-        <ThemedText type="eyebrow" themeColor="textSecondary">
-          Ad Soyad
-        </ThemedText>
-        <ThemedText type="smallBold">{profile?.full_name ?? '-'}</ThemedText>
-
-        <ThemedText type="eyebrow" themeColor="textSecondary" style={styles.fieldSpacing}>
-          Telefon
-        </ThemedText>
-        <ThemedText type="smallBold">{profile?.phone ?? '-'}</ThemedText>
-
-        <ThemedText type="eyebrow" themeColor="textSecondary" style={styles.fieldSpacing}>
-          Hesap Türü
-        </ThemedText>
-        <ThemedText type="smallBold">{profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}</ThemedText>
-      </GroupCard>
-
-      {/* Görünüm: gece/gündüz + yazı boyutu tek, sade bir satırda */}
-      <GroupCard style={styles.appearanceCard}>
-        <GroupRow
-          title="Görünüm ve Yazı Boyutu"
-          value={`${THEME_OPTIONS.find((o) => o.key === themePref)?.label} · ${TEXT_SCALE_LABELS[textScale]}`}
-          chevron
-          divider={false}
-          onPress={() => setShowAppearance(true)}
-        />
+      {/* Profil: tek, sade kart */}
+      <GroupCard style={styles.profileCard}>
+        <ThemedView style={styles.avatar}>
+          <ThemedText style={styles.avatarText}>{initials || '?'}</ThemedText>
+        </ThemedView>
+        <ThemedView style={[styles.profileInfo, styles.transparentBg]}>
+          <ThemedText type="smallBold" style={styles.profileName}>
+            {profile?.full_name ?? '-'}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {profile?.phone ? `+${profile.phone}` : '-'}
+          </ThemedText>
+        </ThemedView>
+        <ThemedView style={[styles.roleBadge, { backgroundColor: theme.subtleFill }]}>
+          <ThemedText type="small" style={styles.roleBadgeText}>
+            {profile?.role === 'owner' ? 'Araç Sahibi' : 'Şoför'}
+          </ThemedText>
+        </ThemedView>
       </GroupCard>
 
       {isOwner && (
         <>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
+          <ThemedText type="eyebrow" style={styles.sectionTitle}>
             Araçlar ve Şoförler
           </ThemedText>
 
           {loadingVehicles ? (
             <ActivityIndicator style={styles.loading} />
           ) : groups.length === 0 ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-              Henüz araç eklemedin.
-            </ThemedText>
+            <GroupCard style={styles.emptyCard}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
+                Henüz araç eklemedin.
+              </ThemedText>
+            </GroupCard>
           ) : (
             groups.map(({ vehicle, drivers }) => (
-              <GroupCard key={vehicle.id} style={styles.vehicleGroup}>
+              <GroupCard key={vehicle.id} style={styles.vehicleCard}>
+                {/* Araç başlığı: dokununca araca gider */}
                 <Pressable
-                  style={[styles.plateRow, { borderBottomColor: theme.separator }]}
+                  style={({ pressed }) => [
+                    styles.vehicleHeader,
+                    { borderBottomColor: theme.separator },
+                    pressed && styles.pressed,
+                  ]}
                   onPress={() => router.push(`/vehicle/${vehicle.id}`)}>
-                  <ThemedText type="subtitle" style={styles.plateText}>
-                    {vehicle.plate_no}
-                  </ThemedText>
+                  <ThemedView style={[styles.vehicleIcon, { backgroundColor: Brand.primary }]}>
+                    <SymbolView name="car.fill" size={18} tintColor={Brand.onPrimary} />
+                  </ThemedView>
+                  <ThemedView style={[styles.vehicleHeaderText, styles.transparentBg]}>
+                    <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {drivers.length === 0 ? 'Şoför yok' : `${drivers.length} şoför`}
+                    </ThemedText>
+                  </ThemedView>
+                  <SymbolView name="chevron.right" size={14} tintColor={theme.textSecondary} />
                 </Pressable>
 
-                {drivers.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary" style={[styles.noDrivers, styles.transparentBg]}>
-                    Henüz şoför eklenmedi.
-                  </ThemedText>
-                ) : (
-                  <ThemedView style={[styles.driverList, styles.transparentBg]}>
-                    {drivers.map((row) => (
-                      <ThemedView key={row.id} style={[styles.driverRow, { backgroundColor: theme.subtleFill }]}>
-                        <SymbolView name="person.crop.circle.fill" size={30} tintColor={theme.textSecondary} />
-                        <ThemedView style={[styles.driverInfo, styles.transparentBg]}>
-                          <ThemedText type="smallBold">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {row.driver?.phone ? `+${row.driver.phone}` : '-'}
-                          </ThemedText>
-                        </ThemedView>
-                        <Pressable
-                          style={({ pressed }) => [styles.deleteAction, pressed && styles.deleteButtonPressed]}
-                          onPress={() => handleDelete(vehicle.id, row)}
-                          hitSlop={6}>
-                          <ThemedView style={styles.deleteButton}>
-                            <SymbolView name="trash" size={16} tintColor="#DC2626" />
-                          </ThemedView>
-                          <ThemedText style={styles.deleteLabel}>Şoförü Sil</ThemedText>
-                        </Pressable>
-                      </ThemedView>
-                    ))}
+                {/* Şoförler: ince çizgiyle ayrılmış satırlar */}
+                {drivers.map((row) => (
+                  <ThemedView
+                    key={row.id}
+                    style={[styles.driverRow, styles.transparentBg, { borderBottomColor: theme.separator }]}>
+                    <ThemedView style={[styles.driverAvatar, { backgroundColor: theme.subtleFill }]}>
+                      <SymbolView name="person.fill" size={16} tintColor={theme.textSecondary} />
+                    </ThemedView>
+                    <ThemedView style={[styles.driverInfo, styles.transparentBg]}>
+                      <ThemedText type="smallBold">{row.driver?.full_name ?? 'İsimsiz'}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {row.driver?.phone ? `+${row.driver.phone}` : '-'}
+                      </ThemedText>
+                    </ThemedView>
+                    <Pressable
+                      style={({ pressed }) => [styles.smallDanger, pressed && styles.pressed]}
+                      onPress={() => handleDelete(vehicle.id, row)}
+                      hitSlop={6}>
+                      <SymbolView name="trash" size={13} tintColor="#DC2626" />
+                      <ThemedText style={styles.smallDangerText}>Şoförü Sil</ThemedText>
+                    </Pressable>
                   </ThemedView>
-                )}
+                ))}
 
                 {addingForVehicle === vehicle.id ? (
                   <ThemedView style={[styles.addForm, styles.transparentBg]}>
@@ -359,23 +371,43 @@ export default function AccountScreen() {
                     </Pressable>
                   </ThemedView>
                 ) : (
-                  <Pressable style={styles.addDriverButton} onPress={() => setAddingForVehicle(vehicle.id)}>
-                    <ThemedText type="linkPrimary">+ Şoför Ekle</ThemedText>
-                  </Pressable>
+                  /* Alt kısım: iki eşit buton */
+                  <ThemedView style={[styles.vehicleActions, styles.transparentBg]}>
+                    <Pressable
+                      style={({ pressed }) => [styles.actionButton, { backgroundColor: theme.subtleFill }, pressed && styles.pressed]}
+                      onPress={() => setAddingForVehicle(vehicle.id)}>
+                      <SymbolView name="person.badge.plus" size={15} tintColor={theme.text} />
+                      <ThemedText type="smallBold">Şoför Ekle</ThemedText>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.actionButton, styles.actionDanger, pressed && styles.pressed]}
+                      onPress={() => requestDeleteVehicle(vehicle)}>
+                      <SymbolView name="trash" size={14} tintColor="#DC2626" />
+                      <ThemedText type="smallBold" style={styles.dangerText}>
+                        Aracı Sil
+                      </ThemedText>
+                    </Pressable>
+                  </ThemedView>
                 )}
-                <Pressable
-                  onPress={() => requestDeleteVehicle(vehicle)}
-                  style={({ pressed }) => [styles.deleteVehicleRow, { borderTopColor: theme.separator }, pressed && styles.deleteButtonPressed]}>
-                  <SymbolView name="trash" size={14} tintColor="#DC2626" />
-                  <ThemedText type="small" style={styles.deleteVehicleText}>
-                    Aracı Sil
-                  </ThemedText>
-                </Pressable>
               </GroupCard>
             ))
           )}
         </>
       )}
+
+      {/* Ayarlar: görünüm + yasal metinler */}
+      <ThemedText type="eyebrow" style={styles.sectionTitle}>
+        Ayarlar
+      </ThemedText>
+      <GroupCard>
+        <GroupRow
+          title="Görünüm ve Yazı Boyutu"
+          value={`${THEME_OPTIONS.find((o) => o.key === themePref)?.label} · ${TEXT_SCALE_LABELS[textScale]}`}
+          chevron
+          onPress={() => setShowAppearance(true)}
+        />
+        <GroupRow title="Yasal Metinler" chevron divider={false} onPress={() => router.push('/legal' as any)} />
+      </GroupCard>
 
       <Pressable
         style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
@@ -383,15 +415,7 @@ export default function AccountScreen() {
         <ThemedText style={styles.signOutButtonText}>Çıkış Yap</ThemedText>
       </Pressable>
 
-      {/* Hukuki metinler */}
-      <GroupCard style={styles.legalCard}>
-        <GroupRow title="Gizlilik Politikası" chevron onPress={() => router.push('/legal?doc=gizlilik' as any)} />
-        <GroupRow title="Kullanım Koşulları" chevron onPress={() => router.push('/legal?doc=kullanim' as any)} />
-        <GroupRow title="KVKK Aydınlatma Metni" chevron onPress={() => router.push('/legal?doc=kvkk' as any)} />
-        <GroupRow title="Açık Rıza Metni" chevron divider={false} onPress={() => router.push('/legal?doc=acik-riza' as any)} />
-      </GroupCard>
-
-      <Pressable onPress={handleDeleteAccount} style={({ pressed }) => [styles.deleteAccount, pressed && styles.deleteButtonPressed]}>
+      <Pressable onPress={handleDeleteAccount} style={({ pressed }) => [styles.deleteAccount, pressed && styles.pressed]}>
         <ThemedText type="small" style={styles.deleteAccountText}>
           Hesabımı Sil
         </ThemedText>
@@ -491,6 +515,55 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
   },
   header: { marginBottom: Spacing.three, textAlign: 'center' },
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 17 },
+  profileInfo: { flex: 1, gap: 1 },
+  profileName: { fontSize: 16 },
+  roleBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  roleBadgeText: { fontFamily: FontFamily.bodySemiBold, fontSize: 12 },
+  emptyCard: { padding: Spacing.four },
+  vehicleCard: { marginTop: Spacing.two },
+  vehicleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  vehicleIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  vehicleHeaderText: { flex: 1, gap: 1 },
+  driverAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  smallDanger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(220,38,38,0.1)',
+  },
+  smallDangerText: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold, fontSize: 12 },
+  vehicleActions: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.three },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  actionDanger: { backgroundColor: 'rgba(220,38,38,0.1)' },
+  dangerText: { color: '#DC2626' },
+  pressed: { opacity: 0.6 },
   card: { padding: Spacing.four, gap: Spacing.half },
   fieldSpacing: { marginTop: Spacing.three },
   appearanceCard: { marginTop: Spacing.three },
@@ -500,12 +573,12 @@ const styles = StyleSheet.create({
   sizeSample: { fontFamily: FontFamily.bodyBold },
   sheetHint: { fontSize: 13, lineHeight: 18 },
   transparentBg: { backgroundColor: 'transparent' },
-  sectionTitle: { marginTop: Spacing.five, marginBottom: Spacing.one, textAlign: 'center' },
+  sectionTitle: { marginTop: Spacing.four, marginBottom: Spacing.one, paddingHorizontal: Spacing.three },
   loading: { marginTop: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.two },
   vehicleGroup: { padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.three },
   plateRow: { alignItems: 'center', paddingBottom: Spacing.two, borderBottomWidth: StyleSheet.hairlineWidth },
-  plateText: { textAlign: 'center' },
+  plateText: { fontFamily: FontFamily.displayBold, fontSize: 18, lineHeight: 22 },
   noDrivers: { marginTop: Spacing.one },
   driverList: { gap: Spacing.two, marginTop: Spacing.one },
   // Her şoför kendi gri kutusunda - şoförler birbirinden net ayrılıyor.
@@ -513,9 +586,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingVertical: 12,
     paddingHorizontal: Spacing.three,
-    borderRadius: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   driverInfo: { flex: 1 },
   deleteButton: {
@@ -529,7 +602,7 @@ const styles = StyleSheet.create({
   deleteButtonPressed: { opacity: 0.6 },
   deleteAction: { alignItems: 'center', gap: 3 },
   deleteLabel: { color: '#DC2626', fontFamily: FontFamily.bodySemiBold, fontSize: 11, lineHeight: 13 },
-  addForm: { gap: Spacing.two, marginTop: Spacing.two },
+  addForm: { gap: Spacing.two, padding: Spacing.three },
   addDriverButton: { alignItems: 'center', marginTop: Spacing.two, paddingVertical: Spacing.one },
   button: {
     backgroundColor: Brand.primary,

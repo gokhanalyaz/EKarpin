@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { GroupCard, GroupFooter, GroupRow } from '@/components/grouped-list';
 import { LegalDocView } from '@/components/legal-doc-view';
 import { goBackOrHome } from '@/lib/navigation';
 import { SafeScreen } from '@/components/safe-screen';
@@ -10,11 +11,47 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { LEGAL_DOCS, type LegalDocKey } from '@/lib/legal-texts';
 
-/** Tek bir hukuki metni gösteren ekran: /legal?doc=gizlilik | kullanim | kvkk | acik-riza */
+/**
+ * /legal            -> Yasal Metinler listesi (dört metin tek menüde)
+ * /legal?doc=...    -> tek bir metin (gizlilik | kullanim | kvkk | acik-riza)
+ * Açık Rıza Metni KVKK gereği diğer metinlerle birleştirilemez; bu yüzden
+ * tek menü altında ama ayrı belgeler olarak duruyor.
+ */
 export default function LegalScreen() {
   const { doc } = useLocalSearchParams<{ doc?: string }>();
   const theme = useTheme();
-  const legalDoc = LEGAL_DOCS[(doc as LegalDocKey) ?? 'gizlilik'] ?? LEGAL_DOCS.gizlilik;
+  const legalDoc = doc ? LEGAL_DOCS[doc as LegalDocKey] ?? null : null;
+
+  if (!legalDoc) {
+    const order: LegalDocKey[] = ['gizlilik', 'kullanim', 'kvkk', 'acik-riza'];
+    return (
+      <SafeScreen>
+        <View style={styles.header}>
+          <Pressable hitSlop={12} onPress={goBackOrHome} style={styles.back}>
+            <SymbolView name="chevron.left" size={20} tintColor={theme.text} />
+          </Pressable>
+          <ThemedText type="smallBold" style={styles.headerTitle}>
+            Yasal Metinler
+          </ThemedText>
+          <View style={styles.back} />
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <GroupCard>
+            {order.map((key, i) => (
+              <GroupRow
+                key={key}
+                title={LEGAL_DOCS[key].title}
+                chevron
+                divider={i < order.length - 1}
+                onPress={() => router.push(`/legal?doc=${key}` as any)}
+              />
+            ))}
+          </GroupCard>
+          <GroupFooter>Kayıt olurken onayladığın metinler. İstediğin zaman buradan okuyabilirsin.</GroupFooter>
+        </ScrollView>
+      </SafeScreen>
+    );
+  }
 
   return (
     <SafeScreen>

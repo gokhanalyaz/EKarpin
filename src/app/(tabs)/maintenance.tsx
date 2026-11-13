@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ActionSheetModal } from '@/components/action-sheet-modal';
@@ -80,6 +80,9 @@ export default function MaintenanceScreen() {
   const [currentKm, setCurrentKm] = useState<number | null>(null);
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [loading, setLoading] = useState(true);
+  // Yükleniyor göstergesi sadece ilk açılışta ve araç değişince: geri
+  // dönünce sayfa en üste zıplamasın.
+  const loadedVehicleRef = useRef<string | null>(null);
 
   // Bakım ekle / düzenle penceresi
   const [formOpen, setFormOpen] = useState(false);
@@ -100,7 +103,7 @@ export default function MaintenanceScreen() {
 
   const load = useCallback(async () => {
     if (!profile) return;
-    setLoading(true);
+    if (loadedVehicleRef.current === null || loadedVehicleRef.current !== selectedVehicleId) setLoading(true);
     try {
       const v = await listOwnerVehicles(profile.id);
       setVehicles(v);
@@ -121,6 +124,7 @@ export default function MaintenanceScreen() {
       console.warn('Bakım bilgisi yüklenemedi', e);
     } finally {
       setLoading(false);
+      loadedVehicleRef.current = selectedVehicleId ?? '';
     }
   }, [profile, selectedVehicleId]);
 

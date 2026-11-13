@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { deleteVehicleAlert, listOwnerVehicleAlerts, type VehicleAlert } from '@/lib/vehicle-alerts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listMaintenanceReminders, type MaintenanceReminder } from '@/lib/vehicle-maintenance';
+import { markNotificationsSeen } from '@/lib/notification-seen';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 /** Bildirimler artık alt menüde ayrı sekme değil; ana sayfadaki zil
@@ -67,6 +68,8 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
+      // Ekran açıldı: zildeki sayı sıfırlansın.
+      markNotificationsSeen();
     }, [load])
   );
 

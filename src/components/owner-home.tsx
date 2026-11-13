@@ -15,6 +15,7 @@ import { getAnyOpenShift, getLastClosedShift, type Shift } from '@/lib/shifts';
 import { listOwnerVehicleAlerts } from '@/lib/vehicle-alerts';
 import { listVehicleDrivers } from '@/lib/vehicle-drivers';
 import { listMaintenanceReminders } from '@/lib/vehicle-maintenance';
+import { countUnread, getNotificationsLastSeen } from '@/lib/notification-seen';
 import { listOwnerVehicles, type Vehicle } from '@/lib/vehicles';
 
 type StatusInfo = { open: boolean; driverName?: string; cornerLabel?: string; cornerIso?: string | null };
@@ -38,10 +39,14 @@ export function OwnerHome() {
 
       // Zil simgesindeki sayı: şoför bildirimleri + sırası gelen bakımlar.
       // Ana listeyi bekletmemek için arka planda hesaplanıyor.
+      // Sadece okunmamışlar: bildirimler ekranı en son açıldıktan sonra gelenler.
       Promise.all([
         listOwnerVehicleAlerts(data.map((v) => v.id)).catch(() => []),
         listMaintenanceReminders(data).catch(() => []),
-      ]).then(([alerts, reminders]) => setNotificationCount(alerts.length + reminders.length));
+        getNotificationsLastSeen(),
+      ]).then(([alerts, reminders, lastSeen]) =>
+        setNotificationCount(countUnread(alerts, reminders.length, lastSeen))
+      );
 
       const entries = await Promise.all(
         data.map(async (v) => {

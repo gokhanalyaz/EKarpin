@@ -32,7 +32,6 @@ import {
   findDriverByPhone,
   listVehicleDrivers,
   removeDriverFromVehicle,
-  setDriverCanEnterCommission,
   setDriverDailyKmLimit,
   setDriverShiftVisibilityDays,
   type VehicleDriverRow,
@@ -71,6 +70,7 @@ export default function VehicleSettingsScreen() {
 
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [savingLimitFor, setSavingLimitFor] = useState<string | null>(null);
+  const [kmLimitTarget, setKmLimitTarget] = useState<VehicleDriverRow | null>(null);
 
   const [phone, setPhone] = useState('');
   const [assigning, setAssigning] = useState(false);
@@ -151,16 +151,6 @@ export default function VehicleSettingsScreen() {
     setShowPaymentSheet(true);
   }
 
-  async function handleToggleDriverCommission(row: VehicleDriverRow, enabled: boolean) {
-    setDrivers((prev) => prev.map((d) => (d.id === row.id ? { ...d, can_enter_commission: enabled } : d)));
-    try {
-      await setDriverCanEnterCommission(row.id, enabled);
-    } catch (e: any) {
-      setDrivers((prev) => prev.map((d) => (d.id === row.id ? { ...d, can_enter_commission: !enabled } : d)));
-      Alert.alert('Kaydedilemedi', friendlyError(e));
-    }
-  }
-
   async function handleToggleNotifyDrivers(enabled: boolean) {
     if (!vehicle) return;
     const previous = vehicle;
@@ -218,8 +208,16 @@ export default function VehicleSettingsScreen() {
     }
   }
 
-  async function handleSaveLimit(row: VehicleDriverRow) {
-    const raw = limitInputs[row.id] ?? '';
+  function openKmLimit(row: VehicleDriverRow) {
+    setLimitInputs((prev) => ({
+      ...prev,
+      [row.id]: row.daily_km_discount_limit != null ? String(row.daily_km_discount_limit) : '',
+    }));
+    setKmLimitTarget(row);
+  }
+
+  async function handleSaveLimit(row: VehicleDriverRow, override?: string) {
+    const raw = override ?? limitInputs[row.id] ?? '';
     const parsed = raw.trim() ? Number(raw.replace(',', '.')) : null;
     if (raw.trim() && (Number.isNaN(parsed) || (parsed as number) < 0)) {
       Alert.alert('Geçersiz değer', 'Geçerli bir km değeri gir (boş bırakırsan yetki kaldırılır).');
@@ -492,82 +490,64 @@ export default function VehicleSettingsScreen() {
               </ThemedText>
             </ThemedView>
           ) : (
-            drivers.map((item) => (
-              <ThemedView
-                key={item.id}
-                style={[
-                  styles.driverRow,
-                  styles.transparentBg,
-                  { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator },
-                ]}>
-                <ThemedView style={styles.driverCardHeader}>
-                  <ThemedView style={[{ flex: 1 }, styles.transparentBg]}>
-                    <ThemedText type="smallBold" style={styles.driverName}>
-                      {item.driver?.full_name ?? 'İsimsiz'}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {item.driver?.phone ? `+${item.driver.phone}` : '-'}
-                    </ThemedText>
+            drivers.map((item) => {
+              const kmLimit = item.daily_km_discount_limit;
+              const visibility = item.shift_visibility_days;
+              return (
+                <ThemedView
+                  key={item.id}
+                  style={[
+                    styles.driverRow,
+                    styles.transparentBg,
+                    { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator },
+                  ]}>
+                  <ThemedView style={[styles.driverCardHeader]}>
+                    <ThemedView style={[styles.driverAvatar, { backgroundColor: theme.subtleFill }]}>
+                      <SymbolView name="person.fill" size={16} tintColor={theme.textSecondary} />
+                    </ThemedView>
+                    <ThemedView style={[{ flex: 1 }, styles.transparentBg]}>
+                      <ThemedText type="smallBold" style={styles.driverName}>
+                        {item.driver?.full_name ?? 'İsimsiz'}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {item.driver?.phone ? `+${item.driver.phone}` : '-'}
+                      </ThemedText>
+                    </ThemedView>
                   </ThemedView>
-                  <ThemedView style={[styles.driverCardActions, styles.transparentBg]}>
-                    <Pressable
+
+                  {/* Şoför işlemleri: hepsi aynı görünümde, eşit butonlar */}
+                  <ThemedView style={[styles.actionGrid, styles.transparentBg]}>
+                    {vehicle.payment_model === 'km_based' && (
+                      <DriverAction
+                        icon="gauge.with.dots.needle.33percent"
+                        label="Günlük Km Düşümü"
+                        value={kmLimit != null ? `${kmLimit} km` : 'Yok'}
+                        onPress={() => openKmLimit(item)}
+                      />
+                    )}
+                    <DriverAction
+                      icon="eye"
+                      label="Karpin Görüş Süresi"
+                      value={visibility != null ? `${visibility} gün` : 'Sınırsız'}
+                      onPress={() => pickVisibilityDriver(item)}
+                    />
+                    <DriverAction
+                      icon="doc.text"
+                      label="Karpin Sil"
+                      value="Seçerek sil"
                       onPress={() => openShiftPicker(item, false)}
-                      hitSlop={8}
-                      style={({ pressed }) => [styles.driverAction, pressed && styles.pressed]}>
-                      <SymbolView name="doc.text.magnifyingglass" size={18} tintColor={theme.textSecondary} />
-                      <ThemedText type="small" themeColor="textSecondary" style={styles.driverActionLabel}>
-                        Karpin Sil
-                      </ThemedText>
-                    </Pressable>
-                    <Pressable
+                    />
+                    <DriverAction
+                      icon="person.badge.minus"
+                      label="Şoförü Sil"
+                      value="Araçtan çıkar"
+                      danger
                       onPress={() => setRemoveTarget(item)}
-                      hitSlop={8}
-                      style={({ pressed }) => [styles.driverAction, pressed && styles.pressed]}>
-                      <SymbolView name="person.badge.minus" size={18} tintColor="#DC2626" />
-                      <ThemedText type="small" style={[styles.driverActionLabel, styles.removeText]}>
-                        Kaldır
-                      </ThemedText>
-                    </Pressable>
+                    />
                   </ThemedView>
                 </ThemedView>
-                {vehicle.payment_model === 'km_based' && (
-                  <ThemedView style={styles.inlineRow}>
-                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-                      Günlük Km Düşüm Hakkı
-                    </ThemedText>
-                    <TextInput
-                      style={[styles.smallInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
-                      placeholder="Yok"
-                      placeholderTextColor={theme.textSecondary}
-                      keyboardType="number-pad"
-                      value={limitInputs[item.id] ?? ''}
-                      onChangeText={(v) => setLimitInputs((prev) => ({ ...prev, [item.id]: v }))}
-                    />
-                    <Pressable
-                      style={({ pressed }) => [styles.smallSaveButton, pressed && styles.pressed]}
-                      onPress={() => handleSaveLimit(item)}
-                      disabled={savingLimitFor === item.id}>
-                      <ThemedText type="linkPrimary" style={{ fontSize: 13 }}>
-                        {savingLimitFor === item.id ? '...' : 'Kaydet'}
-                      </ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                )}
-                {keys.includes('uygulama_komisyonu') && (
-                  <ThemedView style={styles.inlineRow}>
-                    <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
-                      Uygulama komisyonu girebilir
-                    </ThemedText>
-                    <Switch
-                      value={item.can_enter_commission !== false}
-                      onValueChange={(v) => handleToggleDriverCommission(item, v)}
-                      trackColor={{ true: Brand.primary, false: theme.backgroundSelected }}
-                      ios_backgroundColor={theme.backgroundSelected}
-                    />
-                  </ThemedView>
-                )}
-              </ThemedView>
-            ))
+              );
+            })
           )}
           <Pressable
             style={({ pressed }) => [styles.addDriverRow, pressed && styles.pressed]}
@@ -593,28 +573,45 @@ export default function VehicleSettingsScreen() {
             </Pressable>
           </>
         )}
-
-        <ThemedText type="eyebrow" style={styles.sectionTitle}>
-          Karpin Görüş Süresi
-        </ThemedText>
-        <GroupCard>
-          {drivers.length === 0 ? (
-            <GroupRow title="Önce şoför ekle" divider={false} />
-          ) : (
-            drivers.map((row, index) => (
-              <GroupRow
-                key={row.id}
-                title={row.driver?.full_name ?? 'İsimsiz'}
-                value={row.shift_visibility_days != null ? `${row.shift_visibility_days} gün` : 'Sınırsız'}
-                chevron
-                divider={index < drivers.length - 1}
-                onPress={() => pickVisibilityDriver(row)}
-              />
-            ))
-          )}
-        </GroupCard>
-        <GroupFooter>Şoför kendi panelinde bu aracın karpinlerini kaç gün görsün? Değiştirmek için şoföre dokun.</GroupFooter>
       </ScrollView>
+
+      {/* Günlük km düşüm hakkı */}
+      <ActionSheetModal
+        visible={!!kmLimitTarget}
+        onClose={() => setKmLimitTarget(null)}
+        title="Günlük Km Düşümü"
+        description={`${kmLimitTarget?.driver?.full_name ?? 'Şoför'} vardiya kapatırken günde en fazla kaç km düşebilsin? (örn. müşteri iptali, boş dönüş)`}>
+        <TextInput
+          style={[styles.sheetInput, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.background }]}
+          placeholder="Örn. 20"
+          placeholderTextColor={theme.textSecondary}
+          keyboardType="number-pad"
+          value={kmLimitTarget ? limitInputs[kmLimitTarget.id] ?? '' : ''}
+          onChangeText={(v) => kmLimitTarget && setLimitInputs((prev) => ({ ...prev, [kmLimitTarget.id]: v }))}
+        />
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+          disabled={!!savingLimitFor}
+          onPress={async () => {
+            if (!kmLimitTarget) return;
+            await handleSaveLimit(kmLimitTarget);
+            setKmLimitTarget(null);
+          }}>
+          <ThemedText style={styles.buttonText}>{savingLimitFor ? 'Kaydediliyor...' : 'Kaydet'}</ThemedText>
+        </Pressable>
+        <Pressable
+          style={styles.sheetCancelButton}
+          onPress={async () => {
+            if (!kmLimitTarget) return;
+            setLimitInputs((prev) => ({ ...prev, [kmLimitTarget.id]: '' }));
+            await handleSaveLimit({ ...kmLimitTarget }, '');
+            setKmLimitTarget(null);
+          }}>
+          <ThemedText type="smallBold" style={styles.removeText}>
+            Km Düşüm Yetkisini Kaldır
+          </ThemedText>
+        </Pressable>
+      </ActionSheetModal>
 
       {/* Çalışma sistemini değiştir */}
       <ActionSheetModal
@@ -819,6 +816,43 @@ export default function VehicleSettingsScreen() {
   );
 }
 
+/** Şoför kartındaki tek tip işlem butonu (hepsi aynı görünümde). */
+function DriverAction({
+  icon,
+  label,
+  value,
+  danger,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const color = danger ? '#DC2626' : theme.text;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionTile,
+        { backgroundColor: danger ? 'rgba(220,38,38,0.08)' : theme.subtleFill },
+        pressed && styles.pressed,
+      ]}>
+      <ThemedView style={[styles.actionTileTop, styles.transparentBg]}>
+        <SymbolView name={icon as any} size={15} tintColor={color} />
+        <ThemedText type="smallBold" style={[styles.actionTileLabel, { color }]} numberOfLines={1}>
+          {label}
+        </ThemedText>
+      </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.actionTileValue}>
+        {value}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.six, gap: Spacing.two },
@@ -852,7 +886,22 @@ const styles = StyleSheet.create({
   smallSaveButton: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
   driverRow: { paddingHorizontal: Spacing.three, paddingVertical: 14, gap: Spacing.one },
   driverName: { fontSize: 16 },
-  driverCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
+  driverAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two },
+  actionTile: { width: '48%', flexGrow: 1, borderRadius: 12, padding: 10, gap: 2 },
+  actionTileTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionTileLabel: { fontSize: 13, lineHeight: 17 },
+  actionTileValue: { fontSize: 12, lineHeight: 16 },
+  sheetInput: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
+    fontSize: 20,
+    fontFamily: FontFamily.bodyBold,
+    textAlign: 'center',
+  },
+  driverCardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, backgroundColor: 'transparent' },
   driverCardActions: { flexDirection: 'row', gap: Spacing.three },
   driverAction: { alignItems: 'center', gap: 2, minWidth: 52 },
   driverActionLabel: { fontSize: 11, lineHeight: 14 },

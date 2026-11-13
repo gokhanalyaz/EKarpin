@@ -30,6 +30,8 @@ import type { Vehicle } from '@/lib/vehicles';
  */
 
 type ExportRow = {
+  /** Birden fazla araç dışa aktarılıyorsa plaka (Geçmiş sekmesinden). */
+  plate: string | null;
   shiftNo: number | null;
   driverName: string;
   openedAt: string;
@@ -116,8 +118,13 @@ function getDurationMinutes(openedAt: string, closedAt: string | null): number |
   return diff >= 0 ? Math.round(diff / 60000) : null;
 }
 
-function buildExportRows(shifts: Shift[], driverNames: Record<string, string>): ExportRow[] {
+function buildExportRows(
+  shifts: Shift[],
+  driverNames: Record<string, string>,
+  plateById?: Record<string, string>
+): ExportRow[] {
   return shifts.map((s) => ({
+    plate: plateById ? plateById[s.vehicle_id] ?? '-' : null,
     shiftNo: s.shift_no,
     driverName: driverNames[s.driver_id] ?? 'İsimsiz',
     openedAt: s.opened_at,
@@ -219,25 +226,32 @@ async function shareFile(file: File) {
 // Excel (.xlsx)
 // ---------------------------------------------------------------------------
 
+/**
+ * vehicle: başlık ve dosya adı için (Geçmiş sekmesinde "Tüm Araçlar" gibi bir
+ * etiket de olabilir). plateById verilirse her satıra plaka sütunu eklenir.
+ */
 export async function exportShiftsToExcel(
-  vehicle: Vehicle,
+  vehicle: Pick<Vehicle, 'plate_no'>,
   shifts: Shift[],
   driverNames: Record<string, string>,
-  rangeLabel: string
+  rangeLabel: string,
+  plateById?: Record<string, string>
 ): Promise<void> {
   if (shifts.length === 0) {
     Alert.alert('Karpin yok', 'Bu filtreye uyan kapanmış karpin bulunamadı.');
     return;
   }
-  const rows = buildExportRows(shifts, driverNames);
+  const rows = buildExportRows(shifts, driverNames, plateById);
+  const withPlate = !!plateById;
   const totals = computeTotals(rows);
 
   const aoa: (string | number)[][] = [
     [`${vehicle.plate_no} - ${rangeLabel}`],
     [`Oluşturulma: ${formatDateTimeLocal(new Date().toISOString())}`],
     [],
-    [...HEADERS],
+    [...(withPlate ? ['Plaka'] : []), ...HEADERS],
     ...rows.map((r) => [
+      ...(withPlate ? [r.plate ?? '-'] : []),
       r.shiftNo ?? '',
       r.driverName,
       formatDateTimeLocal(r.openedAt),
@@ -260,6 +274,7 @@ export async function exportShiftsToExcel(
       r.notes ?? '',
     ]),
     [
+      ...(withPlate ? [''] : []),
       'TOPLAM',
       '',
       '',
@@ -284,7 +299,7 @@ export async function exportShiftsToExcel(
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = HEADERS.map((h) => ({ wch: Math.max(10, h.length + 2) }));
+  ws['!cols'] = [...(withPlate ? ['Plaka'] : []), ...HEADERS].map((h) => ({ wch: Math.max(10, h.length + 2) }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Karpinler');
   const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' }) as string;
@@ -308,7 +323,7 @@ export async function exportShiftsToExcel(
 
 type PdfColumn = { header: string; weight: number; align: 'left' | 'right' };
 
-const PDF_COLUMNS: PdfColumn[] = [
+const BASE_PDF_COLUMNS: PdfColumn[] = [
   { header: 'No', weight: 1, align: 'left' },
   { header: 'Şoför', weight: 3, align: 'left' },
   { header: 'Açılış', weight: 3, align: 'left' },
@@ -334,8 +349,9 @@ function money(n: number | null): string {
 }
 
 function pdfRowValues(r: ExportRow): string[] {
+  const no = r.shiftNo != null ? String(r.shiftNo) : '-';
   return [
-    r.shiftNo != null ? String(r.shiftNo) : '-',
+    r.plate ? `${r.plate} #${no}` : no,
     r.driverName,
     formatDateTimeLocal(r.openedAt),
     r.closedAt ? formatDateTimeLocal(r.closedAt) : '-',
@@ -374,11 +390,16 @@ function categorySummaryHtml(totals: ReturnType<typeof computeTotals>): string {
 }
 
 function buildPdfHtml(
-  vehicle: Vehicle,
+  vehicle: Pick<Vehicle, 'plate_no'>,
   rangeLabel: string,
   rows: ExportRow[],
   totals: ReturnType<typeof computeTotals>
 ): string {
+  // Birden fazla araç varsa ilk sütun "Araç / No" olur ve genişler.
+  const withPlate = rows.some((r) => r.plate);
+  const PDF_COLUMNS: PdfColumn[] = withPlate
+    ? [{ header: 'Araç / No', weight: 2.6, align: 'left' }, ...BASE_PDF_COLUMNS.slice(1)]
+    : BASE_PDF_COLUMNS;
   const totalWeight = PDF_COLUMNS.reduce((sum, c) => sum + c.weight, 0);
   const colgroup = PDF_COLUMNS.map(
     (c) => `<col style="width:${((c.weight / totalWeight) * 100).toFixed(2)}%">`
@@ -442,17 +463,18 @@ function buildPdfHtml(
 }
 
 export async function exportShiftsToPdf(
-  vehicle: Vehicle,
+  vehicle: Pick<Vehicle, 'plate_no'>,
   shifts: Shift[],
   driverNames: Record<string, string>,
-  rangeLabel: string
+  rangeLabel: string,
+  plateById?: Record<string, string>
 ): Promise<void> {
   if (shifts.length === 0) {
     Alert.alert('Karpin yok', 'Bu filtreye uyan kapanmış karpin bulunamadı.');
     return;
   }
 
-  const rows = buildExportRows(shifts, driverNames);
+  const rows = buildExportRows(shifts, driverNames, plateById);
   const totals = computeTotals(rows);
   const html = buildPdfHtml(vehicle, rangeLabel, rows, totals);
 

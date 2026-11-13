@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActionSheetIOS, ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 
 import { DateRangePicker, type DateRange } from '@/components/date-range-picker';
 import { SafeScreen } from '@/components/safe-screen';
@@ -9,6 +10,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, FontFamily, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/hooks/use-theme';
+import { exportShiftsToExcel, exportShiftsToPdf } from '@/lib/export-shifts';
 import { isShiftVisibleToDriver, queryShifts, type Shift } from '@/lib/shifts';
 import {
   getSettlementLabel,
@@ -57,6 +60,8 @@ export default function HistoryScreen() {
   const { profile } = useAuth();
   const isOwner = profile?.role === 'owner';
   const scrollRef = useRef<ScrollView>(null);
+  const theme = useTheme();
+  const [exporting, setExporting] = useState(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(initialVehicleId ?? null);
@@ -76,13 +81,8 @@ export default function HistoryScreen() {
   type SettlementFilter = 'all' | 'pending' | 'done';
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
 
-  // Ekran odaklandığında (örn. araç detayından "Filtrele" ile tekrar girince)
-  // en üste sar - önceki ziyaretten kalma kaydırma konumunda takılı kalmasın.
-  useFocusEffect(
-    useCallback(() => {
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
-  );
+  // Not: Ekrana geri dönüldüğünde kaydırma konumu korunuyor (eskiden en
+  // üste atıyordu).
 
   useEffect(() => {
     if (!profile) return;
@@ -208,6 +208,55 @@ export default function HistoryScreen() {
       return settlementFilter === 'done' ? getSettlementState(s) === 'confirmed' : getSettlementState(s) !== 'confirmed';
     });
   }, [shifts, settlementFilter, isOwner, myVisibilityByVehicle]);
+
+  function rangeLabel(): string {
+    if (customRange) {
+      const a = customRange.from.toLocaleDateString('tr-TR');
+      const b = customRange.to.toLocaleDateString('tr-TR');
+      return a === b ? a : `${a} - ${b}`;
+    }
+    return PRESET_LABELS[preset];
+  }
+
+  /** Geçmiş sekmesindeki filtrelere göre (araç, şoför, tarih, teslim) Excel/PDF indir. */
+  async function doExport(kind: 'excel' | 'pdf') {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const vehicle = selectedVehicleId ? vehicleById[selectedVehicleId] : null;
+      const title = vehicle ? { plate_no: vehicle.plate_no } : { plate_no: 'Tüm Araçlar' };
+      const plates = vehicle ? undefined : vehiclePlateById;
+      if (kind === 'excel') await exportShiftsToExcel(title, visibleShifts, driverNameById, rangeLabel(), plates);
+      else await exportShiftsToPdf(title, visibleShifts, driverNameById, rangeLabel(), plates);
+    } catch (e: any) {
+      Alert.alert('Dışa aktarılamadı', e?.message ?? 'Bilinmeyen hata oluştu.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownloadPress() {
+    if (visibleShifts.length === 0) {
+      Alert.alert('Karpin yok', 'Bu filtrelere uyan karpin bulunamadı.');
+      return;
+    }
+    const message = `${visibleShifts.length} karpin · ${rangeLabel()}`;
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: 'Karpinleri İndir', message, options: ['Excel olarak indir', 'PDF olarak indir', 'Vazgeç'], cancelButtonIndex: 2 },
+        (i) => {
+          if (i === 0) doExport('excel');
+          else if (i === 1) doExport('pdf');
+        }
+      );
+    } else {
+      Alert.alert('Karpinleri İndir', message, [
+        { text: 'Excel', onPress: () => doExport('excel') },
+        { text: 'PDF', onPress: () => doExport('pdf') },
+        { text: 'Vazgeç', style: 'cancel' },
+      ]);
+    }
+  }
 
   async function handleConfirmOne(shift: Shift) {
     try {
@@ -359,9 +408,23 @@ export default function HistoryScreen() {
         </ThemedView>
       )}
 
-      <ThemedText type="eyebrow" style={styles.sectionTitle}>
-        Sonuçlar {loading ? '' : `(${visibleShifts.length})`}
-      </ThemedText>
+      <ThemedView style={styles.resultsHeader}>
+        <ThemedText type="eyebrow">Sonuçlar {loading ? '' : `(${visibleShifts.length})`}</ThemedText>
+        {isOwner && !loading && visibleShifts.length > 0 && (
+          <Pressable
+            hitSlop={10}
+            disabled={exporting}
+            onPress={handleDownloadPress}
+            style={({ pressed }) => [styles.downloadButton, pressed && styles.buttonPressed]}>
+            {exporting ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <SymbolView name="square.and.arrow.down" size={18} tintColor={theme.text} />
+            )}
+            <ThemedText type="smallBold">Excel / PDF İndir</ThemedText>
+          </Pressable>
+        )}
+      </ThemedView>
       {loading ? (
         <ActivityIndicator style={styles.loading} />
       ) : visibleShifts.length === 0 ? (
@@ -416,6 +479,14 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six },
   title: { marginBottom: Spacing.one, textAlign: 'center' },
   sectionTitle: { marginTop: Spacing.two },
+  resultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  downloadButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, backgroundColor: 'transparent' },
   chip: {
     borderWidth: 1,
