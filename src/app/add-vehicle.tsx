@@ -137,10 +137,11 @@ export default function AddVehicleScreen() {
 
         <ThemedText type="smallBold">Çalışma Sistemi</ThemedText>
         {/* İki seçenek yan yana, net ayrılan bir seçim kutusu */}
-        <ThemedView style={[styles.roleRow, { backgroundColor: theme.subtleFill }]}>
+        <ThemedView style={[styles.roleRow, styles.transparentBg]}>
           <Pressable
             style={[
               styles.roleButton,
+              { backgroundColor: theme.card },
               paymentModel === 'percentage' && styles.roleButtonActive,
             ]}
             onPress={() => setPaymentModel('percentage')}>
@@ -153,6 +154,7 @@ export default function AddVehicleScreen() {
           <Pressable
             style={[
               styles.roleButton,
+              { backgroundColor: theme.card },
               paymentModel === 'km_based' && styles.roleButtonActive,
             ]}
             onPress={() => setPaymentModel('km_based')}>
@@ -221,14 +223,17 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  roleRow: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 14 },
+  // İki ayrı, çerçeveli buton: seçili olan sarı, diğeri beyaz + gri çerçeve.
+  roleRow: { flexDirection: 'row', gap: Spacing.two },
   roleButton: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#A1A7B3',
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  roleButtonActive: { backgroundColor: Brand.primary },
+  roleButtonActive: { backgroundColor: Brand.primary, borderColor: Brand.primary },
   roleText: { fontFamily: FontFamily.bodySemiBold },
   roleTextActive: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold },
   button: {

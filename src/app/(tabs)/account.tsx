@@ -317,9 +317,22 @@ export default function AccountScreen() {
                   </ThemedView>
                   <ThemedView style={[styles.vehicleHeaderText, styles.transparentBg]}>
                     <ThemedText style={styles.plateText}>{vehicle.plate_no}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {drivers.length === 0 ? 'Şoför yok' : `${drivers.length} şoför`}
-                    </ThemedText>
+                    {/* Şoför sayısı: belirgin rozet (şoför yoksa turuncu uyarı) */}
+                    <ThemedView
+                      style={[
+                        styles.countBadge,
+                        { backgroundColor: drivers.length === 0 ? 'rgba(217,119,6,0.14)' : 'rgba(22,163,74,0.12)' },
+                      ]}>
+                      <SymbolView
+                        name={drivers.length === 0 ? 'exclamationmark.circle.fill' : 'person.2.fill'}
+                        size={12}
+                        tintColor={drivers.length === 0 ? '#B45309' : '#15803D'}
+                      />
+                      <ThemedText
+                        style={[styles.countBadgeText, { color: drivers.length === 0 ? '#B45309' : '#15803D' }]}>
+                        {drivers.length === 0 ? 'Şoför yok' : `${drivers.length} şoför`}
+                      </ThemedText>
+                    </ThemedView>
                   </ThemedView>
                   <SymbolView name="chevron.right" size={14} tintColor={theme.textSecondary} />
                 </Pressable>
@@ -539,7 +552,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   vehicleIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  vehicleHeaderText: { flex: 1, gap: 1 },
+  vehicleHeaderText: { flex: 1, gap: 4, alignItems: 'flex-start' },
+  countBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  countBadgeText: { fontFamily: FontFamily.bodyBold, fontSize: 12, lineHeight: 15 },
   driverAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   smallDanger: {
     flexDirection: 'row',

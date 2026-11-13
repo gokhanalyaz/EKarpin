@@ -628,7 +628,7 @@ export default function VehicleSettingsScreen() {
             disabled={hasOpenShift}
             style={[
               styles.roleButton,
-              { borderColor: theme.backgroundSelected },
+              { borderColor: '#A1A7B3', backgroundColor: theme.card },
               paymentModelChoice === 'percentage' && styles.roleButtonActive,
               hasOpenShift && styles.roleButtonDisabled,
             ]}
@@ -641,7 +641,7 @@ export default function VehicleSettingsScreen() {
             disabled={hasOpenShift}
             style={[
               styles.roleButton,
-              { borderColor: theme.backgroundSelected },
+              { borderColor: '#A1A7B3', backgroundColor: theme.card },
               paymentModelChoice === 'km_based' && styles.roleButtonActive,
               hasOpenShift && styles.roleButtonDisabled,
             ]}
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
   roleRow: { flexDirection: 'row', gap: Spacing.two },
   roleButton: {
     flex: 1,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
