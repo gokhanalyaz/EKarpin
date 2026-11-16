@@ -11,7 +11,7 @@ import { Brand, Spacing } from '@/constants/theme';
 // Ülke koduyla, boşluksuz: 0542 249 83 72
 const SUPPORT_WHATSAPP = '905422498372';
 const SUPPORT_WHATSAPP_DISPLAY = '0542 249 83 72';
-const SUPPORT_EMAIL = 'info@digitalkarpin.com';
+const SUPPORT_EMAIL = 'info@dijitalkarpin.com';
 
 
 /** Destek sekmesi: WhatsApp'tan yaz veya e-posta gönder (hazır metin yok). */

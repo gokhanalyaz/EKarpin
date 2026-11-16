@@ -11,7 +11,7 @@ export const LEGAL_ENTITY = {
   // TODO: şirket kesinleşince doldurulacak
   title: 'Dijital Karpin',
   address: 'İzmir, Türkiye',
-  email: 'info@digitalkarpin.com',
+  email: 'info@dijitalkarpin.com',
   whatsapp: '0542 249 83 72',
   website: 'dijitalkarpin.com',
 };
