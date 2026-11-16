@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "369567055557",
+    "project_id": "dijital-karpin",
+    "storage_bucket": "dijital-karpin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369567055557:android:4426e86919f7165508faac",
+        "android_client_info": {
+          "package_name": "com.gokhanalyaz.DijitalKarpin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIp3Yw0uhBrJLjILwx_KhggcuzOv2-7vU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
