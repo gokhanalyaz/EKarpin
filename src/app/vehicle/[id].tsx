@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 
 import { SafeScreen } from '@/components/safe-screen';
 import { ShiftHistoryList } from '@/components/shift-history-list';

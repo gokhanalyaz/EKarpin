@@ -23,7 +23,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.gokhanalyaz.DijitalKarpin"
+      "package": "com.gokhanalyaz.DijitalKarpin",
+      "permissions": [
+        "CAMERA",
+        "POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -39,7 +44,12 @@
           "imageWidth": 280
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "color": "#FFC400"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -63,6 +73,10 @@
     },
     "updates": {
       "url": "https://u.expo.dev/d4657f89-0ed2-46d6-bcfc-e14401c94b84"
-    }
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ]
   }
 }

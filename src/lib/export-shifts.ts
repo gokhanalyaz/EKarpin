@@ -210,10 +210,16 @@ async function shareFile(file: File) {
     if (Platform.OS === 'ios') {
       await Share.share({ url: file.uri, title: file.name });
     } else {
-      // Android'de Share.share url ile yerel dosya paylaşamıyor; en azından
-      // dosyanın nerede durduğunu bildirelim (ileride expo-sharing ile
-      // düzgün bir "paylaş" akışı eklenebilir - not alındı).
-      await Share.share({ message: `Dosya kaydedildi: ${file.uri}` });
+      // Android: expo-sharing ile dosyanın kendisi paylaşılıyor (Drive'a
+      // kaydet, WhatsApp, e-posta vb.). Modül sadece burada (Android'de)
+      // yükleniyor: iOS sürümünde bu modül olmadığı için iOS'ta hiç çağrılmıyor.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const Sharing = require('expo-sharing') as typeof import('expo-sharing');
+      const isPdf = file.name.toLowerCase().endsWith('.pdf');
+      await Sharing.shareAsync(file.uri, {
+        mimeType: isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: file.name,
+      });
     }
   } catch (e: any) {
     if (e?.message !== 'User did not share') {

@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 import { ActionSheetIOS, ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet } from 'react-native';
 
 import { DateTimeRangePicker, type DateTimeRange } from '@/components/date-time-range-picker';

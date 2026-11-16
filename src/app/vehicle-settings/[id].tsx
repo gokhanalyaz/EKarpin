@@ -12,7 +12,7 @@ import {
   Switch,
   TextInput,
 } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 
 import { ActionSheetModal } from '@/components/action-sheet-modal';
 import { GroupCard, GroupFooter, GroupRow } from '@/components/grouped-list';

@@ -1,7 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 
 import { DateRangePicker, type DateRange } from '@/components/date-range-picker';
 import { SafeScreen } from '@/components/safe-screen';

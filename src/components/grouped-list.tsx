@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';

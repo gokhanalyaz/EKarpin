@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GroupCard, GroupFooter, GroupRow } from '@/components/grouped-list';

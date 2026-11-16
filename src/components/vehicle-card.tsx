@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/app-icon';
 import { StyleSheet } from 'react-native';
 
 import { PaymentModelBadge } from '@/components/payment-model-badge';

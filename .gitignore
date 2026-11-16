@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Google Play yükleme anahtarı (gizli - asla GitHub'a gitmesin)
+google-play-service-account.json
