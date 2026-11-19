@@ -501,3 +501,15 @@ create policy "Owners delete fine photos"
 alter table public.traffic_fines add column if not exists plate_no text;
 update public.traffic_fines f set plate_no = v.plate_no
   from public.vehicles v where v.id = f.vehicle_id and f.plate_no is null;
+
+-- Karpin bilgisinin cezaya kopyalanmasi: karpin sofordan gizlense ya da
+-- silinse bile sofor cezada o karpinin saatlerini ve km'sini gorur.
+alter table public.traffic_fines add column if not exists shift_no integer;
+alter table public.traffic_fines add column if not exists shift_opened_at timestamptz;
+alter table public.traffic_fines add column if not exists shift_closed_at timestamptz;
+alter table public.traffic_fines add column if not exists shift_opening_km numeric;
+alter table public.traffic_fines add column if not exists shift_closing_km numeric;
+update public.traffic_fines f set
+  shift_no = s.shift_no, shift_opened_at = s.opened_at, shift_closed_at = s.closed_at,
+  shift_opening_km = s.opening_km, shift_closing_km = s.closing_km
+from public.shifts s where s.id = f.shift_id and f.shift_opened_at is null;

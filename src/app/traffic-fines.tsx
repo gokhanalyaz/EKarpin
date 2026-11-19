@@ -30,6 +30,7 @@ import {
   deleteTrafficFine,
   findShiftAt,
   formatFineDateTime,
+  fineShiftLabel,
   formatMoney,
   getFinePhotoUrl,
   getProfileNames,
@@ -238,8 +239,7 @@ export default function TrafficFinesScreen() {
       const { photoError, notified } = await createTrafficFine({
         vehicleId,
         plateNo: plateById[vehicleId] ?? '',
-        shiftId: chosenShift?.id ?? null,
-        driverId: chosenShift?.driver_id ?? null,
+        shift: chosenShift,
         fineAt: lookupAt,
         amount: parsedAmount,
         note: note.trim() || null,
@@ -559,6 +559,14 @@ export default function TrafficFinesScreen() {
                   <ThemedText type="small">Şoför: {f.driver_id ? names[f.driver_id] ?? 'Şoför' : 'Atanmadı'}</ThemedText>
                 )}
                 <ThemedText type="small">Tutar: {formatMoney(f.amount)}</ThemedText>
+                {!!f.shift_opened_at && (
+                  <ThemedText type="small">Karpin: {fineShiftLabel(f)}</ThemedText>
+                )}
+                {(f.shift_opening_km != null || f.shift_closing_km != null) && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Km: {f.shift_opening_km ?? '-'} → {f.shift_closing_km ?? '-'}
+                  </ThemedText>
+                )}
                 {!!f.note && (
                   <ThemedText type="small" themeColor="textSecondary">
                     {f.note}
@@ -566,7 +574,7 @@ export default function TrafficFinesScreen() {
                 )}
                 <View style={styles.linkRow}>
                   {f.photo_url && <PhotoViewButton path={f.photo_url} label="Ceza Fotoğrafı" getUrl={getFinePhotoUrl} />}
-                  {f.shift_id && (
+                  {isOwner && f.shift_id && (
                     <Pressable hitSlop={8} style={styles.linkButton} onPress={() => router.push(`/shift-detail/${f.shift_id}` as any)}>
                       <ThemedText type="linkPrimary">Karpini Aç</ThemedText>
                     </Pressable>
@@ -612,6 +620,14 @@ export default function TrafficFinesScreen() {
                     </View>
                   </View>
                   <ThemedText type="small">Tutar: {formatMoney(f.amount)}</ThemedText>
+                {!!f.shift_opened_at && (
+                  <ThemedText type="small">Karpin: {fineShiftLabel(f)}</ThemedText>
+                )}
+                {(f.shift_opening_km != null || f.shift_closing_km != null) && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Km: {f.shift_opening_km ?? '-'} → {f.shift_closing_km ?? '-'}
+                  </ThemedText>
+                )}
                   {!!f.note && (
                     <ThemedText type="small" themeColor="textSecondary">
                       {f.note}
@@ -619,11 +635,6 @@ export default function TrafficFinesScreen() {
                   )}
                   <View style={styles.linkRow}>
                     {f.photo_url && <PhotoViewButton path={f.photo_url} label="Ceza Fotoğrafı" getUrl={getFinePhotoUrl} />}
-                    {f.shift_id && (
-                      <Pressable hitSlop={8} style={styles.linkButton} onPress={() => router.push(`/shift-detail/${f.shift_id}` as any)}>
-                        <ThemedText type="linkPrimary">Karpini Aç</ThemedText>
-                      </Pressable>
-                    )}
                   </View>
                 </ThemedView>
               ))}

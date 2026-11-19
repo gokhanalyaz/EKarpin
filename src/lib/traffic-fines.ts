@@ -13,6 +13,12 @@ export type TrafficFine = {
   plate_no: string | null;
   shift_id: string | null;
   driver_id: string | null;
+  /** Karpin bilgisinin kayıt anındaki kopyası: karpin şoförden gizlense ya da silinse de cezada görünür. */
+  shift_no: number | null;
+  shift_opened_at: string | null;
+  shift_closed_at: string | null;
+  shift_opening_km: number | null;
+  shift_closing_km: number | null;
   fine_at: string;
   amount: number | null;
   note: string | null;
@@ -118,6 +124,17 @@ export function formatMoney(value: number | null | undefined): string {
   return `${Number(value).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ₺`;
 }
 
+/** Cezadaki karpin kopyasından "#12 · 12.11.2026 08:00 → 20:00" gibi kısa metin. */
+export function fineShiftLabel(f: Pick<TrafficFine, 'shift_no' | 'shift_opened_at' | 'shift_closed_at'>): string {
+  if (!f.shift_opened_at) return '';
+  const no = f.shift_no != null ? `#${f.shift_no} · ` : '';
+  const open = formatFineDateTime(f.shift_opened_at);
+  if (!f.shift_closed_at) return `${no}${open} → açık`;
+  const sameDay = new Date(f.shift_opened_at).toDateString() === new Date(f.shift_closed_at).toDateString();
+  const close = sameDay ? formatFineDateTime(f.shift_closed_at).split(' ')[1] : formatFineDateTime(f.shift_closed_at);
+  return `${no}${open} → ${close}`;
+}
+
 /**
  * Cezayı kaydeder, fotoğraf varsa yükler ve şoföre (varsa) bildirim gönderir.
  * Fotoğraf yüklenemezse ceza yine kaydedilir; hata mesajı döner.
@@ -125,8 +142,7 @@ export function formatMoney(value: number | null | undefined): string {
 export async function createTrafficFine(input: {
   vehicleId: string;
   plateNo: string;
-  shiftId: string | null;
-  driverId: string | null;
+  shift: Shift | null;
   fineAt: Date;
   amount: number | null;
   note: string | null;
@@ -137,8 +153,13 @@ export async function createTrafficFine(input: {
     .insert({
       vehicle_id: input.vehicleId,
       plate_no: input.plateNo || null,
-      shift_id: input.shiftId,
-      driver_id: input.driverId,
+      shift_id: input.shift?.id ?? null,
+      driver_id: input.shift?.driver_id ?? null,
+      shift_no: input.shift?.shift_no ?? null,
+      shift_opened_at: input.shift?.opened_at ?? null,
+      shift_closed_at: input.shift?.closed_at ?? null,
+      shift_opening_km: input.shift?.opening_km ?? null,
+      shift_closing_km: input.shift?.closing_km ?? null,
       fine_at: input.fineAt.toISOString(),
       amount: input.amount,
       note: input.note,
@@ -166,14 +187,15 @@ export async function createTrafficFine(input: {
   }
 
   let notified = false;
-  if (input.driverId) {
-    const token = await getUserPushToken(input.driverId);
+  if (input.shift?.driver_id) {
+    const token = await getUserPushToken(input.shift.driver_id);
     if (token) {
       const amountText = input.amount != null ? ` Tutar: ${formatMoney(input.amount)}.` : '';
+      const shiftText = ` Karpin${fineShiftLabel(fine) ? ` ${fineShiftLabel(fine)}` : ''}.`;
       await sendPushNotification(
         token,
         `${input.plateNo} · Trafik Cezası`,
-        `${formatFineDateTime(fine.fine_at)} tarihli trafik cezası sizin karpininize denk geliyor.${amountText}`,
+        `${formatFineDateTime(fine.fine_at)} tarihli trafik cezası sizin karpininize denk geliyor.${shiftText}${amountText}`,
         { type: 'traffic_fine', fineId: fine.id, vehicleId: input.vehicleId }
       );
       notified = true;
