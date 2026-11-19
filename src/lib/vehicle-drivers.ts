@@ -125,11 +125,14 @@ export async function removeDriverFromVehicle(
   options: { vehicleId: string; driverId: string; deleteShifts: boolean }
 ): Promise<void> {
   if (options.deleteShifts) {
+    // Karpinler silinmez; sadece şoförün görünümünden kaldırılır. Araç
+    // sahibinde ve trafik cezası sorgusunda kalmaya devam eder.
     const { error: shiftsError } = await supabase
       .from('shifts')
-      .delete()
+      .update({ hidden_from_driver_at: new Date().toISOString() })
       .eq('vehicle_id', options.vehicleId)
-      .eq('driver_id', options.driverId);
+      .eq('driver_id', options.driverId)
+      .eq('status', 'closed');
     if (shiftsError) throw shiftsError;
   }
 

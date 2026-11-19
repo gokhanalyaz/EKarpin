@@ -229,11 +229,11 @@ export default function AccountScreen() {
         onPress: () => {
           Alert.alert(
             'Karpinler Ne Olsun?',
-            `${name} adlı şoförün bu araçla ilgili tüm karpinleri de silinsin mi? Bu işlem geri alınamaz.`,
+            `${name} adlı şoförün bu araçtaki karpinleri onun ekranından da silinsin mi? Karpinler senin tarafında her zaman kalır.`,
             [
               { text: 'Hayır, Karpinler Kalsın', onPress: () => performDelete(vehicleId, row, false) },
               {
-                text: 'Evet, Karpinleri de Sil',
+                text: 'Evet, Şoförden Sil',
                 style: 'destructive',
                 onPress: () => performDelete(vehicleId, row, true),
               },

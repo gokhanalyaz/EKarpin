@@ -44,6 +44,8 @@ export type Shift = {
   photo_debug: string | null;
 
   driver_marked_delivered_at: string | null;
+  /** Araç sahibi "Karpin Sil" dediyse: karpin sadece şoförün ekranından kalkar, sahipte kalır. */
+  hidden_from_driver_at?: string | null;
   owner_confirmed_received_at: string | null;
 
   created_at: string;
@@ -131,6 +133,7 @@ export async function getLastClosedShiftForDriver(vehicleId: string, driverId: s
     .eq('vehicle_id', vehicleId)
     .eq('driver_id', driverId)
     .eq('status', 'closed')
+    .is('hidden_from_driver_at', null)
     .order('closed_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -572,9 +575,10 @@ export function formatDuration(minutes: number): string {
  * sınırı hiçbir zaman uygulamaz, tüm geçmişi her zaman gösterir.
  */
 export function isShiftVisibleToDriver(
-  shift: Pick<Shift, 'closed_at' | 'opened_at'>,
+  shift: Pick<Shift, 'closed_at' | 'opened_at'> & { hidden_from_driver_at?: string | null },
   visibilityDays: number | null | undefined
 ): boolean {
+  if (shift.hidden_from_driver_at) return false;
   if (!visibilityDays || visibilityDays <= 0) return true;
   const reference = shift.closed_at ?? shift.opened_at;
   if (!reference) return true;
@@ -585,7 +589,8 @@ export function isShiftVisibleToDriver(
 
 /**
  * Araç sahibi, bir şoförün bu araçtaki karpinlerinden SEÇİLİ olanları
- * (shiftIds verilirse) veya TÜMÜNÜ (shiftIds verilmezse/boşsa) siler.
+ * (shiftIds verilirse) veya TÜMÜNÜ (shiftIds verilmezse/boşsa) şoförün
+ * ekranından kaldırır. Kayıt silinmez; araç sahibinde kalır.
  * Şoförü araçtan kaldırmaktan bağımsız olarak da kullanılabilir.
  */
 export async function deleteDriverShifts(
@@ -593,7 +598,14 @@ export async function deleteDriverShifts(
   driverId: string,
   shiftIds?: string[]
 ): Promise<void> {
-  let query = supabase.from('shifts').delete().eq('vehicle_id', vehicleId).eq('driver_id', driverId);
+  // Veri kaybı olmasın: karpin silinmez, sadece şoförün görünümünden kaldırılır
+  // (araç sahibinde, raporlarda ve trafik cezası sorgusunda kalmaya devam eder).
+  let query = supabase
+    .from('shifts')
+    .update({ hidden_from_driver_at: new Date().toISOString() })
+    .eq('vehicle_id', vehicleId)
+    .eq('driver_id', driverId)
+    .eq('status', 'closed');
   if (shiftIds && shiftIds.length > 0) {
     query = query.in('id', shiftIds);
   }

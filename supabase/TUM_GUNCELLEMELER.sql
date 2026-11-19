@@ -513,3 +513,8 @@ update public.traffic_fines f set
   shift_no = s.shift_no, shift_opened_at = s.opened_at, shift_closed_at = s.closed_at,
   shift_opening_km = s.opening_km, shift_closing_km = s.closing_km
 from public.shifts s where s.id = f.shift_id and f.shift_opened_at is null;
+
+-- ---------- shifts_hidden_from_driver.sql ----------
+-- "Karpin Sil" artik veriyi silmez: karpin sadece soforun ekranindan
+-- kalkar, arac sahibinde ve trafik cezasi sorgusunda kalir.
+alter table public.shifts add column if not exists hidden_from_driver_at timestamptz;

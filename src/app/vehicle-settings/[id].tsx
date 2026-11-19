@@ -268,7 +268,8 @@ export default function VehicleSettingsScreen() {
     setPickerLoading(true);
     try {
       const rows = await queryShifts({ vehicleIds: [id], driverId: row.driver_id });
-      setPickerShifts(rows);
+      // Zaten şoförden kaldırılmış olanları tekrar listeleme.
+      setPickerShifts(rows.filter((r) => !r.hidden_from_driver_at));
     } catch (e) {
       console.warn('Karpinler yüklenemedi', e);
       setPickerShifts([]);
@@ -534,7 +535,7 @@ export default function VehicleSettingsScreen() {
                     <DriverAction
                       icon="doc.text"
                       label="Karpin Sil"
-                      value="Seçerek sil"
+                      value="Şoför tarafından"
                       onPress={() => openShiftPicker(item, false)}
                     />
                     <DriverAction
@@ -688,17 +689,17 @@ export default function VehicleSettingsScreen() {
         visible={!!removeTarget}
         onClose={() => setRemoveTarget(null)}
         title="Şoförü Kaldır"
-        description={`${removeTarget?.driver?.full_name ?? 'Bu şoför'} bu araçtan kaldırılacak. Bu şoförün karpinleri ne olsun?`}>
+        description={`${removeTarget?.driver?.full_name ?? 'Bu şoför'} bu araçtan kaldırılacak. Karpinler şoförün ekranından silinse bile senin tarafında her zaman kalır.`}>
         <Pressable style={[styles.sheetButton, styles.sheetButtonPrimary]} onPress={handleKeepShiftsAndRemove}>
           <ThemedText style={styles.sheetButtonPrimaryText}>Karpinler Kalsın, Şoförü Kaldır</ThemedText>
         </Pressable>
         <Pressable
           style={styles.sheetButton}
           onPress={() => removeTarget && openShiftPicker(removeTarget, true)}>
-          <ThemedText type="smallBold">Seçerek Sil ve Kaldır</ThemedText>
+          <ThemedText type="smallBold">Şoförden Seçerek Sil ve Kaldır</ThemedText>
         </Pressable>
         <Pressable style={[styles.sheetButton, styles.sheetButtonDanger]} onPress={handleDeleteAllAndRemove}>
-          <ThemedText style={styles.sheetButtonDangerText}>Tüm Karpinleri Sil ve Kaldır</ThemedText>
+          <ThemedText style={styles.sheetButtonDangerText}>Şoförden Tüm Karpinleri Sil ve Kaldır</ThemedText>
         </Pressable>
         <Pressable style={styles.sheetCancelButton} onPress={() => setRemoveTarget(null)}>
           <ThemedText type="small" themeColor="textSecondary">
@@ -712,7 +713,7 @@ export default function VehicleSettingsScreen() {
         visible={!!shiftPickerFor}
         onClose={() => setShiftPickerFor(null)}
         title="Karpin Seç"
-        description={`${shiftPickerFor?.row.driver?.full_name ?? 'Şoförün'} bu araçtaki karpinlerinden silinecekleri seç.`}>
+        description={`${shiftPickerFor?.row.driver?.full_name ?? 'Şoförün'} ekranından silinecek karpinleri seç. Karpinler senin tarafında kalır, raporlarda ve ceza sorgusunda görünmeye devam eder.`}>
         {pickerLoading ? (
           <ActivityIndicator />
         ) : pickerShifts.length === 0 ? (
