@@ -92,3 +92,9 @@ create policy "Owners delete fine photos"
     bucket_id = 'traffic-fines'
     and public.is_vehicle_owner( (storage.foldername(name))[1]::uuid )
   );
+
+-- Ceza kaydinda plaka da saklanir: sofor sonradan aractan ayrilsa da
+-- (artik araci goremese de) kendi cezasinda plakayi gorebilsin.
+alter table public.traffic_fines add column if not exists plate_no text;
+update public.traffic_fines f set plate_no = v.plate_no
+  from public.vehicles v where v.id = f.vehicle_id and f.plate_no is null;

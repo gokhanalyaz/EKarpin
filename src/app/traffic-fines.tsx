@@ -81,6 +81,8 @@ export default function TrafficFinesScreen() {
   const [saving, setSaving] = useState(false);
 
   const [fines, setFines] = useState<TrafficFine[]>([]);
+  // Araç sahibi olsa da başka birinin aracında şoförlük yapmışsa, ona atanan cezalar.
+  const [myFines, setMyFines] = useState<TrafficFine[]>([]);
   const [finesLoading, setFinesLoading] = useState(true);
   const [paidFilter, setPaidFilter] = useState<PaidFilter>('all');
   const [names, setNames] = useState<Record<string, string>>({});
@@ -107,10 +109,19 @@ export default function TrafficFinesScreen() {
     if (!profile) return;
     setFinesLoading(true);
     try {
+      const ownVehicleIds = vehicles.map((v) => v.id);
       const rows = isOwner
-        ? await listTrafficFines({ vehicleIds: vehicles.map((v) => v.id) })
+        ? ownVehicleIds.length > 0
+          ? await listTrafficFines({ vehicleIds: ownVehicleIds })
+          : []
         : await listTrafficFines({ driverId: profile.id });
-      setFines(isOwner && vehicles.length === 0 ? [] : rows);
+      setFines(rows);
+      if (isOwner) {
+        const assigned = await listTrafficFines({ driverId: profile.id }).catch(() => [] as TrafficFine[]);
+        setMyFines(assigned.filter((f) => !ownVehicleIds.includes(f.vehicle_id)));
+      } else {
+        setMyFines([]);
+      }
       const ids = rows.map((f) => f.driver_id).filter((x): x is string => !!x);
       const map = await getProfileNames(ids).catch(() => ({}) as Record<string, string>);
       setNames((prev) => ({ ...prev, ...map }));
@@ -538,7 +549,7 @@ export default function TrafficFinesScreen() {
               <ThemedView key={f.id} type="backgroundElement" style={styles.fineCard}>
                 <View style={styles.rowBetween}>
                   <ThemedText type="smallBold">
-                    {plateById[f.vehicle_id] ?? ''} · {formatFineDateTime(f.fine_at)}
+                    {f.plate_no ?? plateById[f.vehicle_id] ?? ''} · {formatFineDateTime(f.fine_at)}
                   </ThemedText>
                   <View style={[styles.badge, f.paid_at ? styles.badgePaid : styles.badgeUnpaid]}>
                     <ThemedText style={styles.badgeText}>{f.paid_at ? 'Ödendi' : 'Ödenmedi'}</ThemedText>
@@ -580,6 +591,43 @@ export default function TrafficFinesScreen() {
                 )}
               </ThemedView>
             ))
+          )}
+
+          {isOwner && myFines.length > 0 && (
+            <>
+              <ThemedText type="eyebrow" style={styles.sectionTitle}>
+                Bana Atanan Cezalar
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Şoför olarak çalıştığın araçlardan sana atanan cezalar.
+              </ThemedText>
+              {myFines.map((f) => (
+                <ThemedView key={f.id} type="backgroundElement" style={styles.fineCard}>
+                  <View style={styles.rowBetween}>
+                    <ThemedText type="smallBold">
+                      {f.plate_no ?? ''} · {formatFineDateTime(f.fine_at)}
+                    </ThemedText>
+                    <View style={[styles.badge, f.paid_at ? styles.badgePaid : styles.badgeUnpaid]}>
+                      <ThemedText style={styles.badgeText}>{f.paid_at ? 'Ödendi' : 'Ödenmedi'}</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText type="small">Tutar: {formatMoney(f.amount)}</ThemedText>
+                  {!!f.note && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {f.note}
+                    </ThemedText>
+                  )}
+                  <View style={styles.linkRow}>
+                    {f.photo_url && <PhotoViewButton path={f.photo_url} label="Ceza Fotoğrafı" getUrl={getFinePhotoUrl} />}
+                    {f.shift_id && (
+                      <Pressable hitSlop={8} style={styles.linkButton} onPress={() => router.push(`/shift-detail/${f.shift_id}` as any)}>
+                        <ThemedText type="linkPrimary">Karpini Aç</ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                </ThemedView>
+              ))}
+            </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>

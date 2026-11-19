@@ -9,6 +9,8 @@ export const FINE_PHOTO_BUCKET = 'traffic-fines';
 export type TrafficFine = {
   id: string;
   vehicle_id: string;
+  /** Kayıt anındaki plaka - şoför sonradan araçtan ayrılsa da cezada plaka görünsün diye. */
+  plate_no: string | null;
   shift_id: string | null;
   driver_id: string | null;
   fine_at: string;
@@ -134,6 +136,7 @@ export async function createTrafficFine(input: {
     .from('traffic_fines')
     .insert({
       vehicle_id: input.vehicleId,
+      plate_no: input.plateNo || null,
       shift_id: input.shiftId,
       driver_id: input.driverId,
       fine_at: input.fineAt.toISOString(),
