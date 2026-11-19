@@ -10,10 +10,12 @@ type Props = {
   label?: string;
   /** true ise metin yerine kucuk bir fotograf ikonu gosterir (DetailRow'un yanina gomulu kullanim icin). */
   iconOnly?: boolean;
+  /** Farklı bir bucket'taki fotoğraf için imzalı link üreten fonksiyon (varsayılan: shift-photos). */
+  getUrl?: (path: string) => Promise<string | null>;
 };
 
 /** Private storage'daki bir fotografi (imzali link uretip) tam ekran gosteren buton. */
-export function PhotoViewButton({ path, label, iconOnly }: Props) {
+export function PhotoViewButton({ path, label, iconOnly, getUrl }: Props) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function PhotoViewButton({ path, label, iconOnly }: Props) {
     setLoading(true);
     setFailed(false);
     try {
-      const signed = await getSignedPhotoUrl(path);
+      const signed = await (getUrl ?? getSignedPhotoUrl)(path);
       if (signed) {
         setUrl(signed);
       } else {

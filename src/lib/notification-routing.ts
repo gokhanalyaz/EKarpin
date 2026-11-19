@@ -19,6 +19,9 @@ export function resolveNotificationRoute(data: Record<string, unknown> | undefin
   if ((type === 'shift_opened' || type === 'shift_closed') && typeof data.shiftId === 'string') {
     return `/shift-detail/${data.shiftId}`;
   }
+  if (type === 'traffic_fine') {
+    return '/traffic-fines';
+  }
   if (type === 'vehicle_alert' && typeof data.vehicleId === 'string') {
     return `/vehicle/${data.vehicleId}`;
   }

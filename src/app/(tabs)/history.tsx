@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SymbolView } from '@/components/app-icon';
@@ -286,6 +286,21 @@ export default function HistoryScreen() {
         Karpin Geçmişi
       </ThemedText>
 
+      <Pressable
+        onPress={() => router.push('/traffic-fines' as any)}
+        style={({ pressed }) => [styles.fineButton, pressed && styles.buttonPressed]}>
+        <SymbolView name="exclamationmark.octagon.fill" size={22} tintColor={Brand.onPrimary} />
+        <ThemedView style={styles.fineButtonTextWrap}>
+          <ThemedText style={styles.fineButtonTitle}>
+            {isOwner ? 'Trafik Cezası Sorgula' : 'Trafik Cezalarım'}
+          </ThemedText>
+          <ThemedText style={styles.fineButtonSub}>
+            {isOwner ? 'Ceza saatinde aracı hangi şoför kullanıyordu?' : 'Sana atanan trafik cezaları'}
+          </ThemedText>
+        </ThemedView>
+        <SymbolView name="chevron.right" size={18} tintColor={Brand.onPrimary} />
+      </Pressable>
+
       <ThemedText type="eyebrow" style={styles.sectionTitle}>
         Araç
       </ThemedText>
@@ -511,4 +526,17 @@ const styles = StyleSheet.create({
   },
   batchButtonText: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
   buttonPressed: { opacity: 0.7 },
+  fineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: Brand.primary,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    marginBottom: Spacing.one,
+  },
+  fineButtonTextWrap: { flex: 1, backgroundColor: 'transparent' },
+  fineButtonTitle: { color: Brand.onPrimary, fontFamily: FontFamily.bodyBold, fontSize: 16 },
+  fineButtonSub: { color: Brand.onPrimary, fontSize: 13, opacity: 0.8 },
 });
